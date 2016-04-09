@@ -1,9 +1,9 @@
 import logging
+
 import redis
 
 from wsgi.properties import queue_redis_address, queue_redis_password, queue_redis_port
 from wsgi.rr_people import deserialize, S_STOP, serialize
-from wsgi.rr_people.posting.posts import PostSource
 
 log = logging.getLogger("pq")
 

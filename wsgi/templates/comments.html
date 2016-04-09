@@ -9,25 +9,19 @@
             {% for s, st in subs.items() %}
             <div>
 
-                    <h3>{{s}}:
-                        <a href="{{url_for('comment_search_info', sub=s)}}">
+                <h3>{{s}}:
+                    <button type="button" class="btn btn-default" aria-label="Left Align" onclick="start_find_comments('{{s}}')">
+                        <span class="glyphicon glyphicon glyphicon-play" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="btn btn-danger" aria-label="Left Align" onclick="refresh_searcher_state('{{s}}')">
+                        <span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span>
+                    </button>
+                    <a href="{{url_for('comment_search_info', sub=s)}}">
                         <small id="{{s}}-st">{{st}}</small>
-                            </a>
-                        <button type="button" class="btn btn-default" onclick="start_find_comments('{{s}}')">Начать поиск комментариев</button>
-                    </h3>
-
-            </div>
-            {% endfor %}
-
-        </div>
-
-    </div>
-
-    <div class="row">
-        <div class="col-md-12">
-            {% for s, posts in qc_s.items() %}
-            {% if posts %}
-            <div>
+                    </a>
+                </h3>
+                <div>
+                    {% if s in qc_s %}
                 <div class="accordion" id="info-accordion">
                     <div class="accordion-group">
                         <div class="accordion-heading">
@@ -46,7 +40,7 @@
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {% for pfn, text in posts.items() %}
+                                    {% for pfn, text in qc_s[s].items() %}
 
                                     <tr>
                                         <td>
@@ -64,9 +58,13 @@
                         </div>
                     </div>
                 </div>
+                    {%endif%}
             </div>
-            {% endif %}
+            </div>
+            <br>
+            <hr>
             {% endfor %}
+
         </div>
     </div>
 </div>

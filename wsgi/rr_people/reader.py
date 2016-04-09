@@ -6,17 +6,14 @@ import time
 from datetime import datetime
 from multiprocessing import Process
 
-import praw
 import redis
-from praw.objects import MoreComments
 
 from wsgi.db import DBHandler
 from wsgi.properties import DEFAULT_SLEEP_TIME_AFTER_GENERATE_DATA, min_copy_count, \
     shift_copy_comments_part, min_donor_comment_ups, max_donor_comment_ups, \
-    comments_mongo_uri, comments_db_name, expire_low_copies_posts, TIME_TO_WAIT_NEW_COPIES, queue_redis_address, \
+    comments_mongo_uri, comments_db_name, queue_redis_address, \
     queue_redis_port, queue_redis_password, DEFAULT_LIMIT
-from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, \
-    cmp_by_comments_count
+from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict
 from wsgi.rr_people import re_url, normalize, S_WORK, S_SLEEP, re_crying_chars
 from wsgi.rr_people.queue import ProductionQueue
 
@@ -115,6 +112,10 @@ class CommentFounderStateStorage(object):
     def get_state(self, sub):
         return self.redis.hgetall(PERSIST_STATE(sub))
 
+    def reset_state(self, sub):
+        self.redis.hdel(PERSIST_STATE(sub), self.redis.hkeys(PERSIST_STATE(sub)))
+        return
+
 
 class CommentsStorage(DBHandler):
     def __init__(self, name="?"):
@@ -174,7 +175,7 @@ class CommentsStorage(DBHandler):
 
 
 class CommentSearcher(RedditHandler):
-    def __init__(self, user_agent=None, add_authors=False, start_worked=True):
+    def __init__(self, user_agent=None, start_worked=True):
         """
         :param user_agent: for reddit non auth and non oauth client
         :param lcp: low copies posts if persisted
@@ -182,14 +183,9 @@ class CommentSearcher(RedditHandler):
         :return:
         """
         super(CommentSearcher, self).__init__(user_agent)
-        self.db = CommentsStorage(name="comment searcher")
+        self.comment_storage = CommentsStorage(name="comment searcher")
         self.comment_queue = ProductionQueue(name="comment searcher")
         self.subs = {}
-
-        self.add_authors = add_authors
-        if self.add_authors:
-            from wsgi.rr_people.ae import ActionGeneratorDataFormer
-            self.agdf = ActionGeneratorDataFormer()
 
         self.state_storage = CommentFounderStateStorage()
         self.start_supply_comments()
@@ -197,37 +193,16 @@ class CommentSearcher(RedditHandler):
         if start_worked:
             for sub, state in self.comment_queue.get_comment_founders_states().iteritems():
                 if S_WORK in state:
-                    self.start_find_comments(sub)
+                    self.comment_retrieve_iteration(sub)
                     time.sleep(60 * 5)
         log.info("Read human inited!")
 
-    def comment_retrieve_iteration(self, sub, sleep=True):
+    def comment_retrieve_iteration(self, sub):
         self.comment_queue.set_comment_founder_state(sub, S_WORK)
-        start = time.time()
         log.info("Will start find comments for [%s]" % (sub))
         for pfn, ct in self.find_comment(sub):
             self.comment_queue.put_comment(sub, pfn, ct)
-        end = time.time()
-        sleep_time = random.randint(DEFAULT_SLEEP_TIME_AFTER_GENERATE_DATA / 5,
-                                    DEFAULT_SLEEP_TIME_AFTER_GENERATE_DATA)
-        self.comment_queue.set_comment_founder_state(sub, S_SLEEP, ex=sleep_time + 1)
-        if sleep:
-            log.info(
-                    "Was get all comments which found for [%s] at %s seconds... Will trying next after %s" % (
-                        sub, end - start, sleep_time))
-            time.sleep(sleep_time)
 
-    def start_find_comments(self, sub):
-        if sub in self.subs and self.subs[sub].is_alive():
-            return
-
-        def f():
-            while 1:
-                self.comment_retrieve_iteration(sub)
-
-        ps = Process(name="[%s] comment founder" % sub, target=f)
-        ps.start()
-        self.subs[sub] = ps
 
     def start_supply_comments(self):
         log.info("start supplying comments")
@@ -239,13 +214,13 @@ class CommentSearcher(RedditHandler):
                 founder_state = self.comment_queue.get_comment_founder_state(nc_sub)
                 if not founder_state or founder_state is S_SLEEP:
                     log.info("will forced start found comments for [%s]" % (nc_sub))
-                    self.comment_retrieve_iteration(nc_sub, sleep=False)
+                    self.comment_retrieve_iteration(nc_sub)
 
         process = Process(name="comment supplier", target=f)
         process.daemon = True
         process.start()
 
-    def get_posts(self, sub):
+    def _get_posts(self, sub):
         state = self.state_storage.get_state(sub)
         limit = DEFAULT_LIMIT
         if state:
@@ -269,7 +244,7 @@ class CommentSearcher(RedditHandler):
         self.state_storage.persist_load_state(sub, posts[0].created_utc, posts[-1].created_utc, len(posts))
         return posts
 
-    def get_acceptor(self, posts):
+    def _get_acceptor(self, posts):
         posts.sort(cmp_by_created_utc)
         half_avg = float(reduce(lambda x, y: x + y.num_comments, posts, 0)) / (len(posts) * 2)
         for post in posts:
@@ -281,40 +256,35 @@ class CommentSearcher(RedditHandler):
                 return post
 
     def find_comment(self, sub, add_authors=False):
-        # todo вынести загрузку всех постов в отдельную хуйню чтоб не делать это много раз
-        log.info("Start finding comments to sub %s" % sub)
-        posts = self.get_posts(sub)
-        self.comment_queue.set_comment_founder_state(sub, "%s found %s" % (S_WORK, len(posts)), ex=len(posts) * 2)
+        posts = self._get_posts(sub)
+        self.comment_queue.set_comment_founder_state(sub, "%s (will work with %s posts)" % (S_WORK, len(posts)), ex=len(posts) * 2)
         self.state_storage.set_started(sub)
-
+        log.info("Start finding comments to sub %s" % sub)
         for post in posts:
             self.state_storage.set_current(sub, post_to_dict(post))
 
             try:
-                copies = self.get_post_copies(post)
+                copies = self._get_post_copies(post)
                 if len(copies) >= min_copy_count:
-                    post = self.get_acceptor(copies)
+                    post = self._get_acceptor(copies)
                     comment = None
                     for copy in copies:
-                        if copy.subreddit != post.subreddit and copy.fullname != post.fullname:
+                        if post and copy.subreddit != post.subreddit and copy.fullname != post.fullname:
                             comment = self._retrieve_interested_comment(copy, post)
                             if comment:
                                 log.info("Find comment: [%s] in post: [%s] at subreddit: [%s]" % (
                                     comment, post.fullname, sub))
                                 break
 
-                    if comment and self.db.set_post_ready_for_comment(post.fullname):
+                    if comment and self.comment_storage.set_post_ready_for_comment(post.fullname):
                         yield post.fullname, comment.body
 
             except Exception as e:
                 log.exception(e)
 
-            if add_authors or self.add_authors:
-                self.agdf.add_author_data(post.author.name)
-
         self.state_storage.set_ended(sub)
 
-    def get_post_copies(self, post):
+    def _get_post_copies(self, post):
         search_request = "url:\'%s\'" % post.url
         copies = list(self.reddit.search(search_request)) + [post]
         return list(copies)
@@ -332,10 +302,10 @@ class CommentSearcher(RedditHandler):
             if comment.ups >= min_donor_comment_ups and \
                             comment.ups <= max_donor_comment_ups and \
                             post.author != comment.author and \
-                    self.check_comment_text(comment.body, post):
+                    self._check_comment_text(comment.body, post):
                 return comment
 
-    def check_comment_text(self, text, post):
+    def _check_comment_text(self, text, post):
         """
         Checking in db, and by is good and found similar text in post comments.
         Similar it is when tokens (only words) have equal length and full intersection

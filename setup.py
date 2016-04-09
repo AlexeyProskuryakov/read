@@ -1,6 +1,6 @@
 from setuptools import setup
 
-setup(name='humans',
+setup(name='read',
       version='0.1',
       description='Reads for humans management',
       author='alexeyka',
