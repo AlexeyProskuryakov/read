@@ -18,13 +18,33 @@
                 {{sub}}?
             </button>
 
-            <h1>Состояние <small id="{{sub}}-st">[{{text_state}}]
-
-
-            </small></h1>
             <br>
             <hr>
-            <h3>Состояние поиска: {{state}}</h3>
+            <h3>Состояние поиска:<small id="{{sub}}-st">{{text_state}}</small></h3>
+            <table class="table table-striped table-hover">
+                <tr>
+                    <td>Работает</td>
+                    <td>{{state.get('started')}}</td>
+                </tr><tr>
+                    <td>Окончено</td>
+                    <td>{{state.get('ended')}}</td>
+                </tr><tr>
+                    <td>Загруженно</td>
+                    <td>{{state.get('loaded_count')}}</td>
+                </tr><tr>
+                    <td>Обработанно</td>
+                    <td>{{state.get('processed_count')}}</td>
+                </tr><tr>
+                    <td>Начало</td>
+                    <td>{{ state.get('t_start') | float | tst_to_dt }}</td>
+                </tr><tr>
+                    <td>Конец</td>
+                    <td>{{ state.get('t_end') | float | tst_to_dt }}</td>
+                </tr>
+            </table>
+             <button type="button" class="btn btn-danger" aria-label="Left Align" onclick="refresh_searcher_state('{{sub}}')">
+                        <span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span>
+                    </button>
         </div>
 
     </div>

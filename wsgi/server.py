@@ -10,6 +10,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user
 from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
+from wsgi.rr_people import S_WORK
 from wsgi.rr_people.reader import CommentSearcher, CommentsStorage
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp, WakeUpStorage
@@ -37,7 +38,7 @@ def array_to_string(array):
     return " ".join([str(el) for el in array])
 
 
-app.jinja_env.filters["tst_to_dt"] = tst_to_dt
+app.jinja_env.filters['tst_to_dt'] = tst_to_dt
 app.jinja_env.globals.update(array_to_string=array_to_string)
 
 if os.environ.get("test", False):
@@ -142,10 +143,10 @@ def main():
 @app.route("/comment_search/start/<sub>", methods=["POST"])
 @login_required
 def start_comment_search(sub):
-    comment_searcher.comment_retrieve_iteration(sub)
+    comment_searcher.start_comment_retrieve_iteration(sub)
     while 1:
         state = comment_searcher.comment_queue.get_comment_founder_state(sub)
-        if state and "work" in state:
+        if state and S_WORK in state:
             return jsonify({"state": state})
         time.sleep(1)
 
@@ -172,7 +173,7 @@ def comments():
 @app.route("/comment_search/info/<sub>")
 @login_required
 def comment_search_info(sub):
-    posts = comment_storage.get_posts_ready_for_comment()
+    posts = comment_storage.get_posts_ready_for_comment(sub)
     comments = comment_searcher.comment_queue.show_all_comments(sub)
     if comments:
         for i, post in enumerate(posts):
@@ -181,7 +182,7 @@ def comment_search_info(sub):
                 post['text'] = comments.get(post.get("fullname"), "")
             posts[i] = post
 
-    posts_commented = comment_storage.get_posts_commented()
+    posts_commented = comment_storage.get_posts_commented(sub)
     subs = db.get_all_humans_subs()
 
     text_state = comment_searcher.comment_queue.get_comment_founder_state(sub)
