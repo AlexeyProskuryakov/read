@@ -11,9 +11,9 @@ from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK
-from wsgi.rr_people.reader import CommentSearcher, CommentsStorage
+from wsgi.rr_people.reader import CommentSearcher
 from wsgi.user_management import UsersHandler, User
-from wsgi.wake_up import WakeUp, WakeUpStorage
+from wsgi.wake_up import WakeUp
 
 __author__ = '4ikist'
 

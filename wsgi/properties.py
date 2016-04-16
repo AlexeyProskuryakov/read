@@ -63,9 +63,9 @@ queue_redis_address = "pub-redis-11997.us-east-1-3.7.ec2.redislabs.com"
 queue_redis_port = 11997
 queue_redis_password = "sederfes100500"
 
-cfs_redis_address = queue_redis_address
-cfs_redis_port = queue_redis_port
-cfs_redis_password = queue_redis_password
+cfs_redis_address = "pub-redis-17140.us-east-1.1.azure.garantiadata.com"
+cfs_redis_port = 17140
+cfs_redis_password = "sederfes100500"
 
 SEC = 1
 MINUTE = 60

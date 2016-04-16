@@ -22,16 +22,17 @@ NEED_COMMENT = "need_comment"
 
 
 class ProductionQueue():
-    def __init__(self, name="?", clear=False):
+    def __init__(self, name="?", clear=False, max_connections=2):
         self.redis = redis.StrictRedis(host=queue_redis_address,
                                        port=queue_redis_port,
                                        password=queue_redis_password,
-                                       db=0
+                                       db=0,
+                                       max_connections=max_connections
                                        )
         if clear:
             self.redis.flushdb()
 
-        log.info("Production Queue inited for [%s]"%name)
+        log.info("Production Queue inited for [%s]" % name)
 
     def need_comment(self, sbrdt):
         self.redis.publish(NEED_COMMENT, sbrdt)

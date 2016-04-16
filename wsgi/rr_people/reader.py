@@ -1,7 +1,6 @@
 # coding=utf-8
 import json
 import logging
-import random
 import time
 from datetime import datetime
 from multiprocessing import Process
@@ -9,10 +8,9 @@ from multiprocessing import Process
 import redis
 
 from wsgi.db import DBHandler
-from wsgi.properties import DEFAULT_SLEEP_TIME_AFTER_GENERATE_DATA, min_copy_count, \
+from wsgi.properties import min_copy_count, \
     shift_copy_comments_part, min_donor_comment_ups, max_donor_comment_ups, \
-    comments_mongo_uri, comments_db_name, queue_redis_address, \
-    queue_redis_port, queue_redis_password, DEFAULT_LIMIT
+    comments_mongo_uri, comments_db_name, DEFAULT_LIMIT, cfs_redis_address, cfs_redis_port, cfs_redis_password
 from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_STOP
 from wsgi.rr_people import re_url, normalize, S_WORK, S_SLEEP, re_crying_chars
 from wsgi.rr_people.queue import ProductionQueue
@@ -48,11 +46,12 @@ CURRENT = "current"
 
 
 class CommentFounderStateStorage(object):
-    def __init__(self, name="?", clear=False):
-        self.redis = redis.StrictRedis(host=queue_redis_address,
-                                       port=queue_redis_port,
-                                       password=queue_redis_password,
-                                       db=0
+    def __init__(self, name="?", clear=False, max_connections=2):
+        self.redis = redis.StrictRedis(host=cfs_redis_address,
+                                       port=cfs_redis_port,
+                                       password=cfs_redis_password,
+                                       db=0,
+                                       max_connections=max_connections
                                        )
         if clear:
             self.redis.flushdb()
@@ -123,9 +122,9 @@ class CommentsStorage(DBHandler):
         self.comments = self.db.get_collection("comments")
         if not self.comments:
             self.comments = self.db.create_collection(
-                    "comments",
-                    capped=True,
-                    size=1024 * 1024 * 256,
+                "comments",
+                capped=True,
+                size=1024 * 1024 * 256,
             )
             self.comments.drop_indexes()
 
@@ -134,7 +133,6 @@ class CommentsStorage(DBHandler):
             self.comments.create_index([("ready_for_comment", 1)], sparse=True)
             self.comments.create_index([("text_hash", 1)], sparse=True)
             self.comments.create_index([("sub", 1)], sparse=True)
-
 
     def set_post_commented(self, post_fullname, by, hash):
         found = self.comments.find_one({"fullname": post_fullname, "commented": {"$exists": False}})
@@ -156,7 +154,7 @@ class CommentsStorage(DBHandler):
         if found:
             return
         else:
-            return self.comments.insert_one({"fullname": post_fullname, "ready_for_comment": True, "sub":sub})
+            return self.comments.insert_one({"fullname": post_fullname, "ready_for_comment": True, "sub": sub})
 
     def get_posts_ready_for_comment(self, sub=None):
         q = {"ready_for_comment": True, "commented": {"$exists": False}}
@@ -266,8 +264,8 @@ class CommentSearcher(RedditHandler):
             if not post.archived and post.num_comments < half_avg:
                 log.info("found acceptor old: %s, comments: %s, between: \n%s" % (
                     datetime.utcfromtimestamp(post.created_utc), post.num_comments, '\n'.join(
-                            ["[%s]\t%s" % (datetime.utcfromtimestamp(post.created_utc), post.num_comments) for post in
-                             posts])))
+                        ["[%s]\t%s" % (datetime.utcfromtimestamp(post.created_utc), post.num_comments) for post in
+                         posts])))
                 return post
 
     def find_comment(self, sub, add_authors=False):
