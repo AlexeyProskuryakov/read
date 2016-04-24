@@ -212,7 +212,7 @@ class CommentSearcher(RedditHandler):
         def f():
             self.comment_retrieve_iteration(sub)
 
-        process = Process(name="comment force retriever", target=f)
+        process = Process(name="cr [%s]"%sub, target=f)
         process.daemon = True
         process.start()
         self.processes[sub] = process
@@ -262,10 +262,10 @@ class CommentSearcher(RedditHandler):
         half_avg = float(reduce(lambda x, y: x + y.num_comments, posts, 0)) / (len(posts) * 2)
         for post in posts:
             if not post.archived and post.num_comments < half_avg:
-                log.info("found acceptor old: %s, comments: %s, between: \n%s" % (
-                    datetime.utcfromtimestamp(post.created_utc), post.num_comments, '\n'.join(
-                        ["[%s]\t%s" % (datetime.utcfromtimestamp(post.created_utc), post.num_comments) for post in
-                         posts])))
+                # log.info("found acceptor old: %s, comments: %s, between: \n%s" % (
+                #     datetime.utcfromtimestamp(post.created_utc), post.num_comments, '\n'.join(
+                #         ["[%s] : {%s}" % (datetime.utcfromtimestamp(post.created_utc), post.num_comments) for post in
+                #          posts])))
                 return post
 
     def find_comment(self, sub, add_authors=False):
