@@ -139,7 +139,6 @@ class CommentsStorage(DBHandler):
         else:
             self.comments = self.db.get_collection("comments")
 
-
     def set_post_commented(self, post_fullname, by, hash):
         found = self.comments.find_one({"fullname": post_fullname, "commented": {"$exists": False}})
         if not found:
@@ -187,7 +186,7 @@ class CommentsStorage(DBHandler):
 
     def get_posts(self, posts_fullnames):
         for el in self.comments.find({"fullname": {"$in": posts_fullnames}},
-                                     projection={"text": True, "fullname": True, "post_url":True}):
+                                     projection={"text": True, "fullname": True, "post_url": True}):
             yield el
 
 
@@ -219,8 +218,11 @@ class CommentSearcher(RedditHandler):
     def comment_retrieve_iteration(self, sub):
         self._set_state(sub, S_WORK)
         log.info("Will start find comments for [%s]" % (sub))
-        for pfn in self.find_comment(sub):
-            self.comment_queue.put_comment(sub, pfn)
+        try:
+            for pfn in self.find_comment(sub):
+                self.comment_queue.put_comment(sub, pfn)
+        except Exception as e:
+            log.exception(e)
         self._remove_state(sub)
 
     def start_comment_retrieve_iteration(self, sub):
@@ -307,7 +309,8 @@ class CommentSearcher(RedditHandler):
                                     comment.body, post, post.fullname, sub))
                                 break
 
-                    if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, sub, comment.body, post.permalink):
+                    if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, sub, comment.body,
+                                                                                   post.permalink):
                         yield post.fullname
 
             except Exception as e:
