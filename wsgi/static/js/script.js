@@ -5,7 +5,7 @@ function start_find_comments(sub){
         url:"/comment_search/start/"+sub,
         success:function(x){
              console.log(x);
-             $("#"+sub+"-st").text(x.state);
+             $("#"+sub+"-st").text(x.global+" ["+x.hb+"]");
         }
     })
 }

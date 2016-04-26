@@ -1,5 +1,5 @@
 # coding=utf-8
-import os
+import os, sys
 import time
 from datetime import datetime
 
@@ -12,10 +12,21 @@ from werkzeug.utils import redirect
 from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK
 from wsgi.rr_people.reader import CommentSearcher
+from wsgi.rr_people.states.heart_beat import HeartBeatManager
+from wsgi.rr_people.states.redis_state_persist import StatePersist
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
 
 __author__ = '4ikist'
+
+sp = StatePersist("server")
+state = sp.get_state("server")
+if state.hb_state == S_WORK:
+    sys.exit(-1)
+
+heart_beat = HeartBeatManager()
+heart_beat.start()
+heart_beat.set_state("server", S_WORK)
 
 import sys
 
@@ -48,7 +59,6 @@ if os.environ.get("test", False):
     app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
     toolbar = DebugToolbarExtension(app)
 
-
 wu = WakeUp()
 wu.daemon = True
 wu.start()
@@ -78,12 +88,15 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 db = HumanStorage(name="hs server")
-comment_searcher = CommentSearcher()
+comment_searcher = CommentSearcher(heart_beat)
 comment_storage = comment_searcher.comment_storage
+comment_queue = comment_searcher.comment_queue
+persist_states = comment_searcher.persist_states
 
 usersHandler = UsersHandler(db)
 log.info("users handler was initted")
 usersHandler.add_user(User("3030", "89231950908zozo"))
+
 
 @app.before_request
 def load_user():
@@ -139,53 +152,55 @@ def main():
     return render_template("main.html", **{"username": user.name})
 
 
-
 @app.route("/comment_search/start/<sub>", methods=["POST"])
 @login_required
 def start_comment_search(sub):
-    comment_searcher.start_comment_retrieve_iteration(sub)
+    comment_queue.need_comment(sub)
     while 1:
-        state = comment_searcher.comment_queue.get_comment_founder_state(sub)
-        if state and S_WORK in state:
-            return jsonify({"state": state})
+        state = persist_states.get_state(sub)
+        if state.hb_state and S_WORK in state.hb_state:
+            return jsonify({"global": state.global_state, "hb": state.hb_state})
         time.sleep(1)
 
-@app.route("/comment_search/reset_state/<sub>",methods=["POST"])
+
+@app.route("/comment_search/reset_state/<sub>", methods=["POST"])
 @login_required
 def reset_comment_searcher_state(sub):
     comment_searcher.state_storage.reset_state(sub)
-    return jsonify({"ok":True})
+    return jsonify({"ok": True})
+
 
 @app.route("/comments")
 @login_required
 def comments():
     subs_names = db.get_all_humans_subs()
-    qc_s = {}
-    subs = {}
+    queue_data = {}
+    subs_states = {}
     for sub in subs_names:
-        queued_comments = comment_searcher.comment_queue.show_all_comments(sub)
-        qc_s[sub] = queued_comments
-        subs[sub] = comment_searcher.comment_queue.get_comment_founder_state(sub)
+        posts_ids = comment_queue.get_all_comments_post_ids(sub)
+        queue_data_for_sub = list(comment_storage.get_posts(posts_ids))
 
-    return render_template("comments.html", **{"subs": subs, "qc_s": qc_s})
+        queue_data[sub] = queue_data_for_sub
+        subs_states[sub] = persist_states.get_state(sub)
+
+    return render_template("comments.html", **{"subs_states": subs_states,
+                                               "queue_data": queue_data})
 
 
 @app.route("/comment_search/info/<sub>")
 @login_required
 def comment_search_info(sub):
     posts = comment_storage.get_posts_ready_for_comment(sub)
-    comments = comment_searcher.comment_queue.show_all_comments(sub)
-    if comments:
+    comments_posts_ids = comment_queue.get_all_comments_post_ids(sub)
+    if comments_posts_ids:
         for i, post in enumerate(posts):
-            post['is_in_queue'] = post.get("fullname") in comments
-            if post["is_in_queue"]:
-                post['text'] = comments.get(post.get("fullname"), "")
+            post['is_in_queue'] = post.get("fullname") in comments_posts_ids
             posts[i] = post
 
     posts_commented = comment_storage.get_posts_commented(sub)
     subs = db.get_all_humans_subs()
 
-    text_state = comment_searcher.comment_queue.get_comment_founder_state(sub)
+    text_state = persist_states.get_state(sub)
     state = comment_searcher.state_storage.get_state(sub)
 
     result = {"posts_found_comment_text": posts,
@@ -193,7 +208,7 @@ def comment_search_info(sub):
               "sub": sub,
               "a_subs": subs,
               "text_state": text_state,
-              "state":state
+              "state": state
               }
     return render_template("comment_search_info.html", **result)
 

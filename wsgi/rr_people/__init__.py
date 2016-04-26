@@ -1,9 +1,9 @@
 import logging
 import random
 import re
+from threading import Thread
 
 import praw
-import time
 from praw.objects import MoreComments
 from stemming.porter2 import stem
 
@@ -59,9 +59,6 @@ re_url = re.compile("((https?|ftp)://|www\.)[^\s/$.?#].[^\s]*")
 re_crying_chars = re.compile("[A-Z!]{2,}")
 
 log = logging.getLogger("man")
-
-WORDS_HASH = "words_hash"
-
 
 class RedditHandler(object):
     def __init__(self, user_agent=None):
@@ -161,21 +158,6 @@ def tokens_equals(tokens, another_tokens, more_than_perc=50):
     t = set(another_tokens)
     intersection = o.intersection(t)
     return float(len(intersection)) >= ((float(len(o) + len(t)) / 2) * more_than_perc) / 100
-
-
-CQ_SEP = "$:$"
-
-
-def deserialize(key):
-    if isinstance(key, (str, unicode)) and CQ_SEP in key:
-        splitted = key.split(CQ_SEP)
-        if len(splitted) == 2:
-            return tuple(splitted)
-    return None
-
-
-serialize = lambda pfn, ct: "%s%s%s" % (pfn, CQ_SEP, ct)
-
 
 def cmp_by_created_utc(x, y):
     return int(x.created_utc - y.created_utc)
