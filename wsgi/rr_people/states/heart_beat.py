@@ -24,7 +24,6 @@ class HeartBeatManager(Thread):
 
     def run(self):
         while 1:
-
             try:
                 hbelement = self.queue.get_nowait()
                 if hbelement and isinstance(hbelement, HeartBeatTask):
@@ -37,7 +36,9 @@ class HeartBeatManager(Thread):
             except:
                 pass
 
-            self.state_persist.set_states(self.aspect_states)
+            if self.aspect_states:
+                log.info("States: \n %s" % " | ".join(["%s:%s" % (k, v) for k, v in self.aspect_states.iteritems()]))
+                self.state_persist.set_states(self.aspect_states)
 
             time.sleep(1)
 

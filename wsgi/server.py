@@ -19,10 +19,10 @@ from wsgi.wake_up import WakeUp
 
 __author__ = '4ikist'
 
-sp = StatePersist("server")
-state = sp.get_state("server")
-if state.hb_state == S_WORK:
-    sys.exit(-1)
+# sp = StatePersist("server")
+# state = sp.get_state("server")
+# if state.hb_state == S_WORK:
+#     sys.exit(-1)
 
 heart_beat = HeartBeatManager()
 heart_beat.start()
