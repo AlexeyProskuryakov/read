@@ -228,12 +228,12 @@ class CommentSearcher(RedditHandler):
     def start_comment_retrieve_iteration(self, sub):
         log.info("start comment retrieve iteration")
         if sub in self.processes and self.processes[sub].is_alive():
-            log.info("")
+            log.info("process for sub [%s] already work"%sub)
             return
 
         state = self.persist_states.get_state(sub)
         if state.hb_state == S_WORK:
-            log.info("comment founder already work for sub %s" % sub)
+            log.info("comment founder already work for sub [%s]" % sub)
             return
 
         def f():
@@ -364,5 +364,4 @@ class CommentSearcher(RedditHandler):
 if __name__ == '__main__':
     CommentFounderStateStorage(clear=True)
     heart_beat = HeartBeatManager()
-    heart_beat.start()
     cs = CommentSearcher(heart_beat)
