@@ -25,7 +25,7 @@ __author__ = '4ikist'
 #     sys.exit(-1)
 
 heart_beat = HeartBeatManager()
-heart_beat.set_state("server", S_WORK)
+heart_beat.start_heart_beat("server", S_WORK)
 
 import sys
 

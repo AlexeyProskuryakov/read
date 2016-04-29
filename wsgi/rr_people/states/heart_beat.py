@@ -75,7 +75,7 @@ class HeartBeatManager(Process):
 
             time.sleep(1)
 
-    def set_state(self, aspect, state):
+    def start_heart_beat(self, aspect, state):
         self.state_persist.set_state_task(HeartBeatTask(HBS_ADD_ASPECT, aspect, state))
 
     def stop_heart_beat(self, aspect):
@@ -85,7 +85,7 @@ class HeartBeatManager(Process):
 if __name__ == '__main__':
     hbm = HeartBeatManager()
 
-    hbm.set_state("test", S_WORK)
-    hbm.set_state("test2", S_WORK)
+    hbm.start_heart_beat("test", S_WORK)
+    hbm.start_heart_beat("test2", S_WORK)
 
     hbm.join()

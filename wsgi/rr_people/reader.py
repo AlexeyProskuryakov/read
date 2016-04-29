@@ -190,6 +190,7 @@ class CommentsStorage(DBHandler):
             yield el
 
 
+comment_searcher_aspect = "comment_searcher"
 class CommentSearcher(RedditHandler):
     def __init__(self, heart_beat, user_agent=None):
         """
@@ -208,9 +209,10 @@ class CommentSearcher(RedditHandler):
 
         self.start_supply_comments()
         log.info("Read human inited!")
+        self.hb.start_heart_beat(comment_searcher_aspect, S_WORK)
 
     def _set_state(self, sub, state):
-        self.hb.set_state(sub, state)
+        self.hb.start_heart_beat(sub, state)
 
     def _remove_state(self, sub):
         self.hb.stop_heart_beat(sub)
@@ -228,7 +230,7 @@ class CommentSearcher(RedditHandler):
     def start_comment_retrieve_iteration(self, sub):
         log.info("start comment retrieve iteration")
         if sub in self.processes and self.processes[sub].is_alive():
-            log.info("process for sub [%s] already work"%sub)
+            log.info("process for sub [%s] already work" % sub)
             return
 
         state = self.persist_states.get_state(sub)
@@ -245,6 +247,10 @@ class CommentSearcher(RedditHandler):
         self.processes[sub] = process
 
     def start_supply_comments(self):
+        if self.persist_states.get_state(comment_searcher_aspect).hb_state == S_WORK:
+            log.info("will not supply because already supplied")
+            return
+
         log.info("start supplying comments")
 
         def f():
@@ -277,7 +283,9 @@ class CommentSearcher(RedditHandler):
         current = self.state_storage.get_current(sub)
         if current:
             posts = filter(lambda x: x.created_utc > current.get("created_utc"), posts)
-        self.state_storage.persist_load_state(sub, posts[0].created_utc, posts[-1].created_utc, len(posts))
+
+        if len(posts):
+            self.state_storage.persist_load_state(sub, posts[0].created_utc, posts[-1].created_utc, len(posts))
         return posts
 
     def _get_acceptor(self, posts):
