@@ -4,6 +4,7 @@ import logging
 import time
 from datetime import datetime
 from multiprocessing import Process, Queue
+from multiprocessing.process import current_process
 
 import redis
 
@@ -15,6 +16,7 @@ from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_ST
 from wsgi.rr_people import re_url, normalize, S_WORK, S_SLEEP, re_crying_chars
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.states.heart_beat import HeartBeatManager
+from wsgi.rr_people.states.processes import ProcessDirector
 from wsgi.rr_people.states.redis_state_persist import StatePersist
 
 log = logging.getLogger("reader")
@@ -190,9 +192,11 @@ class CommentsStorage(DBHandler):
             yield el
 
 
-comment_searcher_aspect = "comment_searcher"
+cs_aspect = lambda x: "CS_%s" % x
+
+
 class CommentSearcher(RedditHandler):
-    def __init__(self, heart_beat, user_agent=None):
+    def __init__(self, user_agent=None):
         """
         :param user_agent: for reddit non auth and non oauth client
         :param lcp: low copies posts if persisted
@@ -200,63 +204,61 @@ class CommentSearcher(RedditHandler):
         :return:
         """
         super(CommentSearcher, self).__init__(user_agent)
-        self.hb = heart_beat
         self.comment_storage = CommentsStorage(name="comment_searcher")
         self.comment_queue = CommentQueue(name="comment_searcher")
-        self.persist_states = StatePersist(name="comment_searcher")
         self.state_storage = CommentFounderStateStorage(name="comment_searcher")
+        self.process_director = ProcessDirector(name="comment_searcher")
         self.processes = {}
 
         self.start_supply_comments()
-        log.info("Read human inited!")
-        self.hb.start_heart_beat(comment_searcher_aspect, S_WORK)
+        log.info("comment searcher inited!")
 
-    def _set_state(self, sub, state):
-        self.hb.start_heart_beat(sub, state)
+    def _start(self, aspect):
+        started = self.process_director.start_aspect(cs_aspect(aspect), current_process().pid)
+        return started
 
-    def _remove_state(self, sub):
-        self.hb.stop_heart_beat(sub)
+    def _stop(self, aspect):
+        self.process_director.stop_aspect(cs_aspect(aspect))
 
     def comment_retrieve_iteration(self, sub):
-        self._set_state(sub, S_WORK)
+        started = self._start(sub)
+        if not started:
+            log.info("Can not start comment retrieve iteration in [%s] because already started" % sub)
+            return
+
         log.info("Will start find comments for [%s]" % (sub))
         try:
             for pfn in self.find_comment(sub):
                 self.comment_queue.put_comment(sub, pfn)
         except Exception as e:
             log.exception(e)
-        self._remove_state(sub)
+
+        self._stop(sub)
 
     def start_comment_retrieve_iteration(self, sub):
-        log.info("start comment retrieve iteration")
         if sub in self.processes and self.processes[sub].is_alive():
             log.info("process for sub [%s] already work" % sub)
-            return
-
-        state = self.persist_states.get_state(sub)
-        if state.hb_state == S_WORK:
-            log.info("comment founder already work for sub [%s]" % sub)
             return
 
         def f():
             self.comment_retrieve_iteration(sub)
 
-        process = Process(name="cr [%s]" % sub, target=f)
+        process = Process(name="csp [%s]" % sub, target=f)
         process.daemon = True
         process.start()
         self.processes[sub] = process
 
     def start_supply_comments(self):
-        if self.persist_states.get_state(comment_searcher_aspect).hb_state == S_WORK:
-            log.info("will not supply because already supplied")
+        start = self._start("supply_comments")
+        if not start:
+            log.info("Can not supply because already supplied")
             return
 
-        log.info("start supplying comments")
-
         def f():
+            log.info("Start supplying comments")
             for message in self.comment_queue.get_who_needs_comments():
                 nc_sub = message.get("data")
-                log.info("receive need comments for sub [%s]" % nc_sub)
+                log.info("Receive need comments for sub [%s]" % nc_sub)
                 self.start_comment_retrieve_iteration(nc_sub)
 
         process = Process(name="comment supplier", target=f)
@@ -297,7 +299,6 @@ class CommentSearcher(RedditHandler):
 
     def find_comment(self, sub, add_authors=False):
         posts = self._get_posts(sub)
-        self._set_state(sub, "%s (will work with %s posts)" % (S_WORK, len(posts)))
 
         self.state_storage.set_started(sub)
         log.info("Start finding comments to sub %s" % sub)

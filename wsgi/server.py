@@ -1,7 +1,9 @@
 # coding=utf-8
-import os, sys
+import os
+import signal
 import time
 from datetime import datetime
+from multiprocessing.process import current_process
 
 from flask import Flask, logging, request, render_template, session, url_for, g
 from flask.json import jsonify
@@ -13,19 +15,14 @@ from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK
 from wsgi.rr_people.reader import CommentSearcher
 from wsgi.rr_people.states.heart_beat import HeartBeatManager
-from wsgi.rr_people.states.redis_state_persist import StatePersist
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
 
 __author__ = '4ikist'
 
-# sp = StatePersist("server")
-# state = sp.get_state("server")
-# if state.hb_state == S_WORK:
-#     sys.exit(-1)
-
-heart_beat = HeartBeatManager()
-heart_beat.start_heart_beat("server", S_WORK)
+signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+# heart_beat = HeartBeatManager()
+# heart_beat.start_heart_beat("server", S_WORK, current_process().pid)
 
 import sys
 
@@ -87,7 +84,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 db = HumanStorage(name="hs server")
-comment_searcher = CommentSearcher(heart_beat)
+comment_searcher = CommentSearcher()
 comment_storage = comment_searcher.comment_storage
 comment_queue = comment_searcher.comment_queue
 persist_states = comment_searcher.persist_states
@@ -214,4 +211,8 @@ def comment_search_info(sub):
 
 if __name__ == '__main__':
     print os.path.dirname(__file__)
-    app.run(port=65011)
+    import random
+
+    port = random.randint(65000, 65100)
+    print "PORT: ", port
+    app.run(port=port)

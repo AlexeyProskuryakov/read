@@ -1,3 +1,8 @@
+from subprocess import check_output
+
+from wsgi.properties import HEART_BEAT_PIDS_QUERY
+
+
 class StateObject(object):
     def __init__(self, global_state, hb_state=None):
         self.global_state = global_state
@@ -53,4 +58,6 @@ class HeartBeatTask(object):
     def __repr__(self):
         return "HBTASK %s: aspect: %s, pid: %s, state: %s" % (self.action, self.aspect, self.pid, self.state)
 
-# todo not work with pid
+def get_worked_pids():
+    worked_pids = set(map(int, check_output(["pidof", HEART_BEAT_PIDS_QUERY]).split()))
+    return worked_pids

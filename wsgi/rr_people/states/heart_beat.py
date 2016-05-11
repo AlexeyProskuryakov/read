@@ -10,7 +10,7 @@ import signal
 
 from wsgi.properties import HEART_BEAT_PERIOD, HEART_BEAT_PIDS_QUERY
 from wsgi.rr_people import Singleton, S_WORK
-from wsgi.rr_people.states import HeartBeatTask, AspectState
+from wsgi.rr_people.states import HeartBeatTask, AspectState, get_worked_pids
 from wsgi.rr_people.states.redis_state_persist import StatePersist
 
 HBS_ADD_ASPECT = "add"
@@ -86,7 +86,7 @@ class HeartBeatManager(Process):
                     self._del_aspect(hb_task.aspect, hb_task.pid)
 
     def clear_dead(self):
-        worked_pids = set(map(int, check_output(["pidof", HEART_BEAT_PIDS_QUERY]).split()))
+        worked_pids = get_worked_pids()
         dead_pids = set(self.pids.keys()).difference(worked_pids)
         if dead_pids:
             self.state_persist.del_pids(dead_pids)
@@ -123,7 +123,7 @@ class HeartBeatManager(Process):
 if __name__ == '__main__':
     hbm = HeartBeatManager()
 
-    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
     def f():
         log.info("will start...%s" % (current_process().pid))
         i = 0
@@ -133,11 +133,14 @@ if __name__ == '__main__':
 
         log.info("end...")
 
+
     p = Process(target=f)
-    p.daemon=True
+    p.daemon = True
     p.start()
 
-
     hbm.start_heart_beat("test", S_WORK, p.pid)
+    p2 = Process(target=f)
+    p2.start()
+    hbm.start_heart_beat("test", S_WORK, p2.pid)
 
     hbm.join()
