@@ -3,17 +3,19 @@ import logging
 
 import redis
 
-from wsgi.properties import cfs_redis_port, cfs_redis_address, cfs_redis_password
-from wsgi.rr_people.states import StateObject, HeartBeatTask
+from wsgi.properties import cfs_redis_port, cfs_redis_address, cfs_redis_password, HEART_BEAT_PERIOD
+from wsgi.rr_people.states import StateObject, HeartBeatTask, AspectState
 
 log = logging.getLogger("state_persist")
 
 HASH_STATES = "states"
-STATE = lambda x: "state_%s" % x
+STATE = lambda x: "state_%s" % (x)
+PID = lambda x: "pid_%s" % x
+PIDS = "pids"
+STATES = "PS_STATES"
 
-PS_STATES = "PS_STATES"
+HB_WORK = "HB_WORK"
 
-EX_TIME = 2
 
 class StatePersist():
     def __init__(self, name="?", clear=False, max_connections=2):
@@ -25,33 +27,55 @@ class StatePersist():
                                        )
         if clear:
             self.redis.flushdb()
+        self.ex = HEART_BEAT_PERIOD * 2
+        log.info("Redis state persist [%s] inited for [%s]" % (cfs_redis_address, name))
 
-        log.info("Redis state persist inited for [%s]" % name)
-
-    def set_state(self, aspect, state):
+    def set_states(self, states, hb_process_pid=1):
         pipe = self.redis.pipeline()
-        pipe.hset(HASH_STATES, aspect, state)
-        pipe.set(STATE(aspect), state, ex=2)
-        pipe.execute()
-
-    def set_states(self, states):
-        pipe = self.redis.pipeline()
-        for aspect,state in states.iteritems():
-            pipe.hset(HASH_STATES, aspect, state)
-            pipe.set(STATE(aspect), state, ex=EX_TIME)
+        pipe.set(HB_WORK, hb_process_pid, ex=self.ex)
+        for state in states:
+            if isinstance(state, AspectState):
+                pipe.hset(HASH_STATES, state.aspect, state.state)
+                pipe.set(STATE(state.aspect), state.state, ex=self.ex)
+                pipe.hset(PIDS, state.pid, state.aspect)
         pipe.execute()
 
     def get_state(self, aspect):
-        return StateObject(self.redis.hget(HASH_STATES, aspect), self.redis.get(STATE(aspect)))
+        global_state = self.redis.hget(HASH_STATES, aspect)
+        hb_state = self.redis.get(STATE(aspect))
+        return StateObject(global_state, hb_state)
+
+    def get_pids(self):
+        dead, work = [], []
+        pids = self.redis.hgetall(PIDS)
+        if pids:
+            for pid, aspect in pids.iteritems():
+                if self.redis.get(STATE(aspect)):
+                    work.append(pid)
+                else:
+                    dead.append(pid)
+        return dead, work
+
+    def start_hb_flag(self, hb_process_pid=1):
+        return self.redis.set(HB_WORK, hb_process_pid, nx=True, ex=self.ex)
 
     def set_state_task(self, hb_task):
-        self.redis.publish(PS_STATES, json.dumps(hb_task.to_dict()))
+        self.redis.lpush(STATES, json.dumps(hb_task.to_dict()))
 
-    def subscribe_state_tasks(self):
-        pubsub = self.redis.pubsub(ignore_subscribe_messages=True)
-        pubsub.subscribe(PS_STATES)
-        for el in pubsub.listen():
-            data = el.get('data')
-            if data:
-                data = json.loads(data)
-                yield HeartBeatTask.from_dict(data)
+    def get_all_pids(self):
+        pids_dict = self.redis.hgetall(PIDS)
+        return pids_dict
+
+    def del_pids(self, pids):
+        for pid in pids:
+            aspect = self.redis.hget(PID, pid)
+            self.redis.delete(STATE(aspect))
+            self.redis.hdel(PID, pid)
+
+    def get_state_tasks(self):
+        while 1:
+            raw_task = self.redis.rpop(STATES)
+            if not raw_task:
+                break
+            task = HeartBeatTask.from_dict(json.loads(raw_task))
+            yield task
