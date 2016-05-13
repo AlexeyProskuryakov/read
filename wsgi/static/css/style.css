@@ -4,6 +4,16 @@ table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sor
 }
 */
 /* Sortable tables */
+body{
+    background-color:#000!important;
+    color: #aaa;
+}
+#head-main{
+    color: #444;
+}
+#reader{
+    color:#fff;
+}
 table.sortable thead {
     background-color:#eee;
     color:#666666;

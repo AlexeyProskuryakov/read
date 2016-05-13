@@ -21,4 +21,3 @@ function refresh_searcher_state(sub){
         }
     })
 }
-

@@ -24,23 +24,40 @@
     <script src="{{ url_for('static', filename='js/jquery.flot.navigate.js') }}"></script>
     <script src="{{ url_for('static', filename='js/jquery.flot.errorbars.js') }}"></script>
     <script src="{{ url_for('static', filename='js/jquery.flot.time.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mustache.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
     {% block head %}
     {% endblock %}
 </head>
 <div class=page>
-    <ul class="nav nav-pills">
-        {% if session.user_id %}
-        <li role="presentation"><a href="{{ url_for('logout') }}">Log out</a></li>
-        <li role="presentation"><a href="{{ url_for('wake_up_manage') }}">WakeUp management</a></li>
-        <li role="presentation"><a href="{{ url_for('comments') }}">Comments</a></li>
-        {% endif %}
-    </ul>
+    <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                        aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">FHM</a>
+            </div>
+            <div id="navbar" class="collapse navbar-collapse visible-xs-*">
+                <ul class="nav navbar-nav">
+                    <li role="presentation"><a href="{{ url_for('logout') }}">Log out</a></li>
+                    <li role="presentation"><a href="{{ url_for('wake_up_manage') }}">WakeUp management</a></li>
+                    <li role="presentation"><a href="{{ url_for('comments') }}">Comments</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
     <div class="container">
         <div class="row">
             <div class="col-md-8 col-md-offset-3">
-                <h1 class="green">FUCKING HUMAN MANAGEMENT <small>reader</small></h1>
+                <h1 class="head-main">FUCKING HUMAN MANAGEMENT
+                    <small id="reader">reader</small>
+                </h1>
             </div>
         </div>
         <div class="row">

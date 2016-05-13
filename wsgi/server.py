@@ -14,6 +14,7 @@ from werkzeug.utils import redirect
 from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK
 from wsgi.rr_people.reader import CommentSearcher, cs_aspect
+from wsgi.rr_people.states import get_worked_pids
 from wsgi.rr_people.states.heart_beat import HeartBeatManager
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
@@ -155,7 +156,7 @@ def start_comment_search(sub):
     while 1:
         state = state_persist.get_state(cs_aspect(sub))
         if state.mutex_state and S_WORK in state.mutex_state:
-            return jsonify({"global": state.global_state, "mutex": state.hb_state, "history": state.history})
+            return jsonify({"global": state.global_state, "mutex": state.mutex_state, "history": state.history})
         time.sleep(1)
 
 
@@ -171,16 +172,18 @@ def reset_comment_searcher_state(sub):
 def comments():
     subs_names = db.get_all_humans_subs()
     subs_states = {}
+    wp = get_worked_pids()
     for sub in subs_names:
-        subs_states[sub] = state_persist.get_state(cs_aspect(sub))
+        subs_states[sub] = state_persist.get_state(cs_aspect(sub), worked_pids=wp)
 
     return render_template("comments.html", **{"subs_states": subs_states})
 
 
-@app.route("/comments/queue/<sub>")
+@app.route("/comments/queue/<sub>", methods=["GET"])
 def sub_comments(sub):
     post_ids = comment_queue.get_all_comments_post_ids(sub)
-    posts = comment_storage.get_posts(post_ids)
+    posts = map(lambda x: {"url": x.get("post_url"), "fullname": x.get("fullname"), "text": x.get("text")},
+                comment_storage.get_posts(post_ids))
     return jsonify(**{"posts": posts})
 
 
@@ -197,14 +200,15 @@ def comment_search_info(sub):
     posts_commented = comment_storage.get_posts_commented(sub)
     subs = db.get_all_humans_subs()
 
-    text_state = state_persist.get_state(cs_aspect(sub))
+    text_state = state_persist.get_state(cs_aspect(sub), history=True)
     state = comment_searcher.state_storage.get_state(sub)
 
     result = {"posts_found_comment_text": posts,
               "posts_commented": posts_commented,
               "sub": sub,
               "a_subs": subs,
-              "text_state": text_state.global_state,
+              "text_state": text_state,
+              "state_history": text_state.history,
               "state": state
               }
     return render_template("comment_search_info.html", **result)

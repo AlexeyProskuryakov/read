@@ -308,7 +308,7 @@ class CommentSearcher(RedditHandler):
 
     def find_comment(self, sub, add_authors=False):
         posts = self._get_posts(sub)
-        self.state_persist.set_state_data(cs_aspect(sub), {"retrieved": len(posts)})
+        self.state_persist.set_state_data(cs_aspect(sub), {"state": S_WORK, "retrieved": len(posts)})
         self.state_storage.set_started(sub)
         log.info("Start finding comments to sub %s" % sub)
         for post in posts:

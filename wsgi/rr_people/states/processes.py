@@ -62,12 +62,13 @@ class ProcessDirector(object):
                 pid = int(self.redis.get(key))
                 result.append({"aspect": PREFIX_GET_DATA(key), "pid": pid, "work": pid in worked_pids})
 
-    def get_state(self, aspect):
+    def get_state(self, aspect, worked_pids=None):
         pid_raw = self.redis.get(PREFIX(aspect))
         result = {"aspect": aspect,}
+        wp = worked_pids or get_worked_pids()
         if pid_raw:
             pid = int(pid_raw)
-            result = dict(result, **{"pid": pid, "work": pid in get_worked_pids()})
+            result = dict(result, **{"pid": pid, "work": pid in wp})
         else:
             result["work"] = False
         return result
