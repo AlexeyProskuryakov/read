@@ -16,8 +16,8 @@ log = logging.getLogger("DB")
 class DBHandler(object):
     def __init__(self, name="?", uri=mongo_uri, db_name=db_name):
         log.info("start db handler for [%s] %s" % (name, uri))
-        self.client = MongoClient(host=uri)
-        self.db = self.client[db_name]
+        self.mongo_client = MongoClient(host=uri)
+        self.db = self.mongo_client[db_name]
 
 
 class HumanStorage(DBHandler):

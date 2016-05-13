@@ -7,9 +7,11 @@ import redis
 from wsgi.properties import cfs_redis_address, cfs_redis_port, cfs_redis_password
 from wsgi.rr_people.states import get_worked_pids
 
-PREFIX = lambda x: "PD_%s" % x
-
 log = logging.getLogger("process_director")
+
+PREFIX = lambda x: "PD_%s" % x
+PREFIX_QUERY = "PD_*"
+PREFIX_GET_DATA = lambda x: x.replace("PD_", "") if isinstance(x, (str, unicode)) and x.count("PD_") == 1 else x
 
 
 class ProcessDirector(object):
@@ -26,25 +28,43 @@ class ProcessDirector(object):
         self.mutex = Lock()
         log.info("Inited")
 
-
     def start_aspect(self, aspect, pid):
+        """
+        starting or returning False if aspect already started
+        :param aspect:
+        :param pid:
+        :return:
+        """
         with self.mutex:
             result = self.redis.setnx(PREFIX(aspect), pid)
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
                 if aspect_pid in get_worked_pids():
-                    return False
+                    return {"state": "already work", "by": aspect_pid, "started": False}
                 else:
                     p = self.redis.pipeline()
                     p.delete(PREFIX(aspect))
                     p.set(PREFIX(aspect), pid)
                     p.execute()
-                    return True
+                    return {"state": "restarted", "started": True}
 
-            return result
+            return {"state": "started", "started": True}
 
     def stop_aspect(self, aspect):
         self.redis.delete(PREFIX(aspect))
+
+    def get_states(self):
+        keys = self.redis.keys(PREFIX_QUERY)
+        result = []
+        if keys:
+            worked_pids = get_worked_pids()
+            for key in keys:
+                pid = int(self.redis.get(key))
+                result.append({"aspect": PREFIX_GET_DATA(key), "pid": pid, "work": pid in worked_pids})
+
+    def get_state(self, aspect):
+        pid = int(self.redis.get(PREFIX(aspect)))
+        return {"aspect": aspect, "pid": pid, "work": pid in get_worked_pids()}
 
 
 if __name__ == '__main__':

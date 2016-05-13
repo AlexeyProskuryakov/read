@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from datetime import datetime
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 from multiprocessing.process import current_process
 
 import redis
@@ -12,12 +12,11 @@ from wsgi.db import DBHandler
 from wsgi.properties import min_copy_count, \
     shift_copy_comments_part, min_donor_comment_ups, max_donor_comment_ups, \
     comments_mongo_uri, comments_db_name, DEFAULT_LIMIT, cfs_redis_address, cfs_redis_port, cfs_redis_password
-from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_STOP
-from wsgi.rr_people import re_url, normalize, S_WORK, S_SLEEP, re_crying_chars
+from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, S_END
+from wsgi.rr_people import re_url, normalize, re_crying_chars
 from wsgi.rr_people.queue import CommentQueue
-from wsgi.rr_people.states.heart_beat import HeartBeatManager
 from wsgi.rr_people.states.processes import ProcessDirector
-from wsgi.rr_people.states.redis_state_persist import StatePersist
+from wsgi.rr_people.states.persist import StatePersist
 
 log = logging.getLogger("reader")
 
@@ -193,6 +192,8 @@ class CommentsStorage(DBHandler):
 
 
 cs_aspect = lambda x: "CS_%s" % x
+is_cs_aspect = lambda x: x.count("CS_") == 1
+cs_sub = lambda x: x.replace("CS_", "") if isinstance(x, (str, unicode)) and is_cs_aspect(x) else x
 
 
 class CommentSearcher(RedditHandler):
@@ -207,18 +208,26 @@ class CommentSearcher(RedditHandler):
         self.comment_storage = CommentsStorage(name="comment_searcher")
         self.comment_queue = CommentQueue(name="comment_searcher")
         self.state_storage = CommentFounderStateStorage(name="comment_searcher")
-        self.process_director = ProcessDirector(name="comment_searcher")
+        self.state_persist = StatePersist(name="comment_searcher")
         self.processes = {}
 
         self.start_supply_comments()
         log.info("comment searcher inited!")
 
     def _start(self, aspect):
-        started = self.process_director.start_aspect(cs_aspect(aspect), current_process().pid)
-        return started
+        _aspect = cs_aspect(aspect)
+        started = self.state_persist.start_aspect(_aspect, current_process().pid)
+        if started.get("started"):
+            self.state_persist.set_state(_aspect, S_WORK)
+            self.state_persist.set_state_data(_aspect, {"state": "started"})
+            return True
+        return False
 
     def _stop(self, aspect):
-        self.process_director.stop_aspect(cs_aspect(aspect))
+        _aspect = cs_aspect(aspect)
+        self.state_persist.stop_aspect(_aspect)
+        self.state_persist.set_state(_aspect, S_END)
+        self.state_persist.set_state_data(_aspect, {"state": "stopped"})
 
     def comment_retrieve_iteration(self, sub):
         started = self._start(sub)
@@ -299,7 +308,7 @@ class CommentSearcher(RedditHandler):
 
     def find_comment(self, sub, add_authors=False):
         posts = self._get_posts(sub)
-
+        self.state_persist.set_state_data(sub, {"retrieved": len(posts)})
         self.state_storage.set_started(sub)
         log.info("Start finding comments to sub %s" % sub)
         for post in posts:
@@ -320,6 +329,7 @@ class CommentSearcher(RedditHandler):
 
                     if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, sub, comment.body,
                                                                                    post.permalink):
+                        self.state_persist.set_state_data(sub, {"state": "found", "for": post.fullname})
                         yield post.fullname
 
             except Exception as e:
@@ -368,9 +378,3 @@ class CommentSearcher(RedditHandler):
                             return False
                 self.clear_cache(post)
                 return True
-
-
-if __name__ == '__main__':
-    CommentFounderStateStorage(clear=True)
-    heart_beat = HeartBeatManager()
-    cs = CommentSearcher(heart_beat)

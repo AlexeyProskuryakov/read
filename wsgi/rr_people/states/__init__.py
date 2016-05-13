@@ -4,9 +4,9 @@ from wsgi.properties import HEART_BEAT_PIDS_QUERY
 
 
 class StateObject(object):
-    def __init__(self, global_state, hb_state=None):
+    def __init__(self, global_state, mutex_state=None):
         self.global_state = global_state
-        self.hb_state = hb_state
+        self.mutex_state = mutex_state
 
 
 class AspectState(object):

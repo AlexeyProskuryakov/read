@@ -2,16 +2,12 @@ import logging
 import time
 from Queue import Empty
 from multiprocessing import Queue, Process
-from multiprocessing.process import current_process
-from subprocess import check_output
 from threading import Thread
 
-import signal
-
-from wsgi.properties import HEART_BEAT_PERIOD, HEART_BEAT_PIDS_QUERY
+from wsgi.properties import HEART_BEAT_PERIOD
 from wsgi.rr_people import Singleton, S_WORK
 from wsgi.rr_people.states import HeartBeatTask, AspectState, get_worked_pids
-from wsgi.rr_people.states.redis_state_persist import StatePersist
+from wsgi.rr_people.states.persist import StatePersist
 
 HBS_ADD_ASPECT = "add"
 HBS_REMOVE_ASPECT = "remove"
@@ -120,27 +116,3 @@ class HeartBeatManager(Process):
         self.state_persist.set_state_task(HeartBeatTask(HBS_REMOVE_ASPECT, aspect, None, None))
 
 
-if __name__ == '__main__':
-    hbm = HeartBeatManager()
-
-
-    def f():
-        log.info("will start...%s" % (current_process().pid))
-        i = 0
-        while i < 10:
-            time.sleep(1)
-            i += 1
-
-        log.info("end...")
-
-
-    p = Process(target=f)
-    p.daemon = True
-    p.start()
-
-    hbm.start_heart_beat("test", S_WORK, p.pid)
-    p2 = Process(target=f)
-    p2.start()
-    hbm.start_heart_beat("test", S_WORK, p2.pid)
-
-    hbm.join()

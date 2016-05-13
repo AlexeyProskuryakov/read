@@ -54,6 +54,8 @@ S_SLEEP = "sleep"
 S_UNKNOWN = "unknown"
 S_STOP = "stop"
 S_SUSPEND = "suspend"
+S_TERMINATED = "terminated"
+S_END = "end`"
 
 re_url = re.compile("((https?|ftp)://|www\.)[^\s/$.?#].[^\s]*")
 re_crying_chars = re.compile("[A-Z!]{2,}")
