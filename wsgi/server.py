@@ -13,7 +13,7 @@ from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK
-from wsgi.rr_people.reader import CommentSearcher
+from wsgi.rr_people.reader import CommentSearcher, cs_aspect
 from wsgi.rr_people.states.heart_beat import HeartBeatManager
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
@@ -87,7 +87,7 @@ db = HumanStorage(name="hs server")
 comment_searcher = CommentSearcher()
 comment_storage = comment_searcher.comment_storage
 comment_queue = comment_searcher.comment_queue
-persist_states = comment_searcher.persist_states
+state_persist = comment_searcher.state_persist
 
 usersHandler = UsersHandler(db)
 log.info("users handler was initted")
@@ -153,9 +153,9 @@ def main():
 def start_comment_search(sub):
     comment_queue.need_comment(sub)
     while 1:
-        state = persist_states.get_state(sub)
-        if state.hb_state and S_WORK in state.hb_state:
-            return jsonify({"global": state.global_state, "hb": state.hb_state})
+        state = state_persist.get_state(cs_aspect(sub))
+        if state.mutex_state and S_WORK in state.mutex_state:
+            return jsonify({"global": state.global_state, "mutex": state.hb_state, "history": state.history})
         time.sleep(1)
 
 
@@ -170,17 +170,18 @@ def reset_comment_searcher_state(sub):
 @login_required
 def comments():
     subs_names = db.get_all_humans_subs()
-    queue_data = {}
     subs_states = {}
     for sub in subs_names:
-        posts_ids = comment_queue.get_all_comments_post_ids(sub)
-        queue_data_for_sub = list(comment_storage.get_posts(posts_ids))
+        subs_states[sub] = state_persist.get_state(cs_aspect(sub))
 
-        queue_data[sub] = queue_data_for_sub
-        subs_states[sub] = persist_states.get_state(sub)
+    return render_template("comments.html", **{"subs_states": subs_states})
 
-    return render_template("comments.html", **{"subs_states": subs_states,
-                                               "queue_data": queue_data})
+
+@app.route("/comments/queue/<sub>")
+def sub_comments(sub):
+    post_ids = comment_queue.get_all_comments_post_ids(sub)
+    posts = comment_storage.get_posts(post_ids)
+    return jsonify(**{"posts": posts})
 
 
 @app.route("/comment_search/info/<sub>")
@@ -196,14 +197,14 @@ def comment_search_info(sub):
     posts_commented = comment_storage.get_posts_commented(sub)
     subs = db.get_all_humans_subs()
 
-    text_state = persist_states.get_state(sub)
+    text_state = state_persist.get_state(cs_aspect(sub))
     state = comment_searcher.state_storage.get_state(sub)
 
     result = {"posts_found_comment_text": posts,
               "posts_commented": posts_commented,
               "sub": sub,
               "a_subs": subs,
-              "text_state": text_state,
+              "text_state": text_state.global_state,
               "state": state
               }
     return render_template("comment_search_info.html", **result)

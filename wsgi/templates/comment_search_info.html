@@ -13,38 +13,47 @@
             </h1>
 
 
-            <button type="submit" class="form-control form-inline btn btn-lg btn-primary" onclick="start_find_comments('{{sub}}')">
+            <button type="submit" class="form-control form-inline btn btn-lg btn-primary"
+                    onclick="start_find_comments('{{sub}}')">
                 Начать поиск в
                 {{sub}}?
             </button>
 
             <br>
             <hr>
-            <h3>Состояние поиска:<small id="{{sub}}-st">{{text_state.global_state}} [{{text_state.hb_state}}]</small></h3>
+            <h3>Состояние поиска:
+                <small id="{{sub}}-st">{{text_state.global_state}} [{{text_state.mutex_state}}]</small>
+            </h3>
             <table class="table table-striped table-hover">
                 <tr>
                     <td>Работает</td>
                     <td>{{state.get('started')}}</td>
-                </tr><tr>
+                </tr>
+                <tr>
                     <td>Окончено</td>
                     <td>{{state.get('ended')}}</td>
-                </tr><tr>
+                </tr>
+                <tr>
                     <td>Загруженно</td>
                     <td>{{state.get('loaded_count')}}</td>
-                </tr><tr>
+                </tr>
+                <tr>
                     <td>Обработанно</td>
                     <td>{{state.get('processed_count')}}</td>
-                </tr><tr>
+                </tr>
+                <tr>
                     <td>Начало</td>
                     <td>{{ state.get('t_start') | float | tst_to_dt }}</td>
-                </tr><tr>
+                </tr>
+                <tr>
                     <td>Конец</td>
                     <td>{{ state.get('t_end') | float | tst_to_dt }}</td>
                 </tr>
             </table>
-             <button type="button" class="btn btn-danger" aria-label="Left Align" onclick="refresh_searcher_state('{{sub}}')">
-                        <span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span>
-                    </button>
+            <button type="button" class="btn btn-danger" aria-label="Left Align"
+                    onclick="refresh_searcher_state('{{sub}}')">
+                <span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span>
+            </button>
         </div>
 
     </div>

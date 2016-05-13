@@ -215,7 +215,7 @@ class CommentSearcher(RedditHandler):
         log.info("comment searcher inited!")
 
     def _start(self, aspect):
-        _aspect = cs_aspect(aspect)
+        _aspect = aspect if is_cs_aspect(aspect) else cs_aspect(aspect)
         started = self.state_persist.start_aspect(_aspect, current_process().pid)
         if started.get("started"):
             self.state_persist.set_state(_aspect, S_WORK)
@@ -308,7 +308,7 @@ class CommentSearcher(RedditHandler):
 
     def find_comment(self, sub, add_authors=False):
         posts = self._get_posts(sub)
-        self.state_persist.set_state_data(sub, {"retrieved": len(posts)})
+        self.state_persist.set_state_data(cs_aspect(sub), {"retrieved": len(posts)})
         self.state_storage.set_started(sub)
         log.info("Start finding comments to sub %s" % sub)
         for post in posts:
@@ -329,7 +329,7 @@ class CommentSearcher(RedditHandler):
 
                     if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, sub, comment.body,
                                                                                    post.permalink):
-                        self.state_persist.set_state_data(sub, {"state": "found", "for": post.fullname})
+                        self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                         yield post.fullname
 
             except Exception as e:
