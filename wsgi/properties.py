@@ -70,7 +70,7 @@ cfs_redis_password = "sederfes100500"
 states_address = "https://read-shlak0bl0k.rhcloud.com/rockmongo/x"
 states_user = "admin"
 states_pwd = "YsrSQnuBJGhH"
-states_conn_url = "mongodb://%s:%s$OPENSHIFT_MONGODB_DB_HOST:$OPENSHIFT_MONGODB_DB_PORT/"%(states_user, states_pwd)
+states_conn_url = "mongodb://%s:%s@$OPENSHIFT_MONGODB_DB_HOST:$OPENSHIFT_MONGODB_DB_PORT/"%(states_user, states_pwd)
 states_db_name= "read"
 
 
