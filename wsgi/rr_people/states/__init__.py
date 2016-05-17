@@ -59,6 +59,14 @@ class HeartBeatTask(object):
     def __repr__(self):
         return "HBTASK %s: aspect: %s, pid: %s, state: %s" % (self.action, self.aspect, self.pid, self.state)
 
+
 def get_worked_pids():
-    worked_pids = set(map(int, check_output(["pidof", WORKED_PIDS_QUERY]).split()))
+    def get_all_pids():
+        result = check_output(["ps", "aux"]).split('\n')
+        for el in result:
+            process_info = el.split()
+            if len(process_info) > 10:
+                yield process_info[1], process_info[10]
+
+    worked_pids = set(map(int, map(lambda x: x[0], filter(lambda y: WORKED_PIDS_QUERY in y[1], get_all_pids()))))
     return worked_pids
