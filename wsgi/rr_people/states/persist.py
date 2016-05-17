@@ -1,5 +1,4 @@
 import datetime
-import json
 import logging
 
 import pymongo
@@ -7,7 +6,7 @@ import pymongo
 from wsgi.db import DBHandler
 from wsgi.properties import cfs_redis_address, states_db_name, states_conn_url
 from wsgi.rr_people import S_WORK, S_TERMINATED
-from wsgi.rr_people.states import StateObject, HeartBeatTask
+from wsgi.rr_people.states import StateObject
 from wsgi.rr_people.states.processes import ProcessDirector
 
 log = logging.getLogger("state_persist")
@@ -51,15 +50,3 @@ class StatePersist(ProcessDirector, DBHandler):
     def get_state_data(self, aspect):
         return list(self.state_data.find({"aspect": aspect}).sort("time", 1))
 
-        # tasks...
-
-    def set_state_task(self, hb_task):
-        self.redis.lpush(STATE_TASK, json.dumps(hb_task.to_dict()))
-
-    def get_state_tasks(self):
-        while 1:
-            raw_task = self.redis.rpop(STATE_TASK)
-            if not raw_task:
-                break
-            task = HeartBeatTask.from_dict(json.loads(raw_task))
-            yield task
