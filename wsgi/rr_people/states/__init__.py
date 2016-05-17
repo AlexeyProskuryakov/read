@@ -1,6 +1,6 @@
 from subprocess import check_output
 
-from wsgi.properties import HEART_BEAT_PIDS_QUERY
+from wsgi.properties import WORKED_PIDS_QUERY
 
 
 class StateObject(object):
@@ -60,5 +60,5 @@ class HeartBeatTask(object):
         return "HBTASK %s: aspect: %s, pid: %s, state: %s" % (self.action, self.aspect, self.pid, self.state)
 
 def get_worked_pids():
-    worked_pids = set(map(int, check_output(["pidof", HEART_BEAT_PIDS_QUERY]).split()))
+    worked_pids = set(map(int, check_output(["pidof", WORKED_PIDS_QUERY]).split()))
     return worked_pids

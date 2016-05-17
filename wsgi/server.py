@@ -3,7 +3,6 @@ import os
 import signal
 import time
 from datetime import datetime
-from multiprocessing.process import current_process
 
 from flask import Flask, logging, request, render_template, session, url_for, g
 from flask.json import jsonify
@@ -15,15 +14,12 @@ from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK
 from wsgi.rr_people.reader import CommentSearcher, cs_aspect
 from wsgi.rr_people.states import get_worked_pids
-from wsgi.rr_people.states.heart_beat import HeartBeatManager
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
 
 __author__ = '4ikist'
 
 signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-# heart_beat = HeartBeatManager()
-# heart_beat.start_heart_beat("server", S_WORK, current_process().pid)
 
 import sys
 

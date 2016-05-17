@@ -125,8 +125,7 @@ ImgrClientSecret = '945c124e48fd9ca208788c70028d7e8d8c7dc7c1'
 test_mode = os.environ.get("RR_TEST", "false").strip().lower() in ("true", "1", "yes")
 print "TEST? ", test_mode
 
-HEART_BEAT_PERIOD = 1
-HEART_BEAT_PIDS_QUERY = "python2.7"
+WORKED_PIDS_QUERY = "python2.7"
 
 # logger.info(
 #     "Reddit People MANAGEMENT SYSTEM STARTED... \nEnv:%s" % "\n".join(["%s:\t%s" % (k, v) for k, v in os.environ.iteritems()]))

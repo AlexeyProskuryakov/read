@@ -1,12 +1,13 @@
 import random
 import string
-from multiprocessing import Process, Lock
-import requests
 import time
+from multiprocessing import Process
 
+import requests
 from flask import logging
 
 from wsgi.db import DBHandler
+from wsgi.rr_people.states.processes import ProcessDirector
 
 log = logging.getLogger("wake_up")
 
@@ -34,9 +35,12 @@ class WakeUp(Process):
     def __init__(self):
         super(WakeUp, self).__init__()
         self.store = WakeUpStorage("wake_up")
-        self.mutex = Lock()
+        self.pd = ProcessDirector()
 
     def run(self):
+        if not self.pd.start_aspect("wake_up", self.pid):
+            return
+
         while 1:
             try:
                 for url in self.store.get_urls():
