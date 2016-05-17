@@ -89,68 +89,86 @@
 
 
     <div class="row">
-        <h3>Посты с найденным текстом но не прокомментированные:</h3>
-    </div>
+        <h3>Посты с найденным текстом но не прокомментированные.
 
-    <div class="row">
-        <table class="table table-stripped">
-            <thead>
-            <tr>
-                <td>post id</td>
-                <td>text</td>
-                <td>hash</td>
+            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                    data-target="#comments"
+                    aria-expanded="false">
+                покажи-ка
+            </button>
+        </h3>
+    </div>
+    <div class="collapse" id="comments">
+        <div class="well">
+            <table class="table table-stripped table-hover table-condensed">
+                <thead>
+                <tr>
+                    <td>post id</td>
+                    <td>text</td>
+                    <td>hash</td>
 
-            </tr>
-            </thead>
-            <tbody>
-            {% for post in posts_found_comment_text %}
-            {%if post['is_in_queue'] %}
-            <tr>
-                <td>
-                    {{post['fullname']}}
-                </td>
-                <td class="col-md-5">
-                    {{post.get('text')}}
-                </td>
-                <td>
-                    {{post['words_hash']}}
-                </td>
-            </tr>
-            {% endif %}
-            {% endfor %}
-            </tbody>
-        </table>
+                </tr>
+                </thead>
+                <tbody>
+                {% for post in posts_found_comment_text %}
+                {%if post['is_in_queue'] %}
+                <tr>
+                    <td>
+                        {{post['fullname']}}
+                    </td>
+                    <td class="col-md-5">
+                        {{post.get('text')}}
+                    </td>
+                    <td>
+                        {{post['words_hash']}}
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     <div class="row">
-        <h3>Прокомментированные: </h3>
-        <table class="table table-stripped">
-            <thead>
-            <tr>
-                <td>post id</td>
-                <td>text</td>
-                <td>hash</td>
-                <td>by</td>
-            </tr>
-            </thead>
-            <tbody>
-            {% for post in posts_commented %}
-            <tr>
-                <td>
-                    {{post['fullname']}}
-                </td>
-                <td>
-                    {{post.get('text')}}
-                </td>
-                <td>
-                    {{post.get('words_hash')}}
-                </td>
-                <td>
-                    {{post.get('by')}}
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        <h3>Прокомментированные
+            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                    data-target="#comments-end"
+                    aria-expanded="false">
+                покажи-ка
+            </button>
+        </h3>
+        <div class="collapse" id="comments-end">
+            <div class="well">
+                <table class="table table-stripped ">
+                    <thead>
+                    <tr>
+                        <td>post id</td>
+                        <td>text</td>
+                        <td>hash</td>
+                        <td>by</td>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for post in posts_commented %}
+                    <tr>
+                        <td>
+                            {{post['fullname']}}
+                        </td>
+                        <td>
+                            {{post.get('text')}}
+                        </td>
+                        <td>
+                            {{post.get('words_hash')}}
+                        </td>
+                        <td>
+                            {{post.get('by')}}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

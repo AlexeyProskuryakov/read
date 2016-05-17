@@ -5,8 +5,7 @@ import logging
 import pymongo
 
 from wsgi.db import DBHandler
-from wsgi.properties import cfs_redis_address, comments_db_name, \
-    comments_mongo_uri
+from wsgi.properties import cfs_redis_address, states_db_name, states_conn_url
 from wsgi.rr_people import S_WORK, S_TERMINATED
 from wsgi.rr_people.states import StateObject, HeartBeatTask
 from wsgi.rr_people.states.processes import ProcessDirector
@@ -22,9 +21,9 @@ STATE_TASK = "STATE_TASKS"
 class StatePersist(ProcessDirector, DBHandler):
     def __init__(self, name="?", clear=False, max_connections=2):
         ProcessDirector.__init__(self, "state persist %s" % name, clear, max_connections)
-        DBHandler.__init__(self, "state persist %s" % name, uri=comments_mongo_uri, db_name=comments_db_name)
+        DBHandler.__init__(self, "state persist %s" % name, uri=states_conn_url, db_name=states_db_name)
 
-        log.info("Redis state persist [%s] inited for [%s][%s]" % (cfs_redis_address, self.mongo_client.address, name))
+        log.info("State persist [ %s | %s ] inited for [%s]" % (cfs_redis_address, states_conn_url, name))
         try:
             self.state_data = self.db.create_collection("state_data", capped=True, max=1000)
             self.state_data.create_index("aspect")
