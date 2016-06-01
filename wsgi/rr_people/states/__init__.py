@@ -1,3 +1,4 @@
+import logging
 from subprocess import check_output
 
 from wsgi.properties import WORKED_PIDS_QUERY
@@ -60,13 +61,19 @@ class HeartBeatTask(object):
         return "HBTASK %s: aspect: %s, pid: %s, state: %s" % (self.action, self.aspect, self.pid, self.state)
 
 
+log = logging.getLogger("states")
+
+
 def get_worked_pids():
     def get_all_pids():
         result = check_output(["ps", "aux"]).split('\n')
         for el in result:
             process_info = el.split()
             if len(process_info) > 10:
+                log.info("OK: %s %s" % (process_info[1], process_info[10]))
                 yield process_info[1], process_info[10]
+            else:
+                log.info("BAD: %s" % el)
 
     worked_pids = set(
         map(int,
