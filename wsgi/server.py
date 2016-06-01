@@ -37,8 +37,10 @@ app.config['SESSION_TYPE'] = 'filesystem'
 def tst_to_dt(value):
     return datetime.fromtimestamp(value).strftime("%H:%M %d.%m.%Y")
 
+
 def to_dt(value):
     return value.strftime("%d.%m.%Y %H:%M:%S")
+
 
 def array_to_string(array):
     return " ".join([str(el) for el in array])
@@ -201,7 +203,7 @@ def comment_search_info(sub):
     subs = db.get_all_humans_subs()
 
     text_state = state_persist.get_state(cs_aspect(sub), history=True)
-    state = comment_searcher.state_storage.get_state(sub)
+    state = comment_searcher.state_storage.get_state(cs_aspect(sub))
 
     result = {"posts_found_comment_text": posts,
               "posts_commented": posts_commented,

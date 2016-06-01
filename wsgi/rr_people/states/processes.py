@@ -34,7 +34,7 @@ class ProcessDirector(object):
 
     def start_aspect(self, aspect, pid):
         """
-        signaling that some process with @aspect and @pid was started.
+        signaling that some process with :aspect and :pid was started.
         :param aspect: name of process aspect
         :param pid: process id
         :return: result of starting.
@@ -56,7 +56,7 @@ class ProcessDirector(object):
                     p.execute()
                     return {"state": "restarted", "started": True}
             else:
-                log.info("Setnx result is: %s. Will start!")
+                log.info("Setnx result is: [%s]. Will start!"%result)
                 return {"state": "started", "started": True}
 
     def stop_aspect(self, aspect):
