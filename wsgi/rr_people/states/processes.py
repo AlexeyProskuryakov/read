@@ -1,10 +1,12 @@
 # coding:utf-8
 import logging
-from multiprocessing.synchronize import Lock
+from multiprocessing.queues import Queue, JoinableQueue
+from multiprocessing.synchronize import Lock, RLock
 
 import redis
 
 from wsgi.properties import cfs_redis_address, cfs_redis_port, cfs_redis_password
+from wsgi.rr_people import Singleton
 from wsgi.rr_people.states import get_worked_pids
 
 log = logging.getLogger("process_director")
@@ -15,6 +17,8 @@ PREFIX_GET_DATA = lambda x: x.replace("PD_", "") if isinstance(x, (str, unicode)
 
 
 class ProcessDirector(object):
+    __metaclass__ = Singleton
+
     def __init__(self, name="?", clear=False, max_connections=2):
         self.redis = redis.StrictRedis(host=cfs_redis_address,
                                        port=cfs_redis_port,
@@ -25,7 +29,7 @@ class ProcessDirector(object):
         if clear:
             self.redis.flushdb()
 
-        self.mutex = Lock()
+        self.mutex = RLock()
         log.info("Process director inited for %s" % name)
 
     def start_aspect(self, aspect, pid):
@@ -77,9 +81,3 @@ class ProcessDirector(object):
         else:
             result["work"] = False
         return result
-
-
-if __name__ == '__main__':
-    pd = ProcessDirector()
-    pd.start_aspect("test", 1)
-    pd.start_aspect("test", 1)
