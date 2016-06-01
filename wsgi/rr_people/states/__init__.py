@@ -70,10 +70,10 @@ def get_worked_pids():
         for el in result:
             process_info = el.split()
             if len(process_info) > 10:
-                log.info("OK: %s %s" % (process_info[1], process_info[10]))
+                # log.info("OK: %s %s" % (process_info[1], process_info[10]))
                 yield process_info[1], process_info[10]
-            else:
-                log.info("BAD: %s" % el)
+            # else:
+                # log.info("BAD: %s" % el)
 
     worked_pids = set(
         map(int,
