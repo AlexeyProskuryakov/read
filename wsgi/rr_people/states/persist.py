@@ -1,5 +1,6 @@
 import datetime
 import logging
+from multiprocessing.process import current_process
 
 import pymongo
 
@@ -36,7 +37,6 @@ class StatePersist(ProcessDirector, DBHandler):
     def get_state(self, aspect, history=False, worked_pids=None):
         global_state = self.redis.hget(HASH_STATES, aspect)
         pd_state = super(StatePersist, self).get_state(aspect, worked_pids=worked_pids)
-
         result = StateObject(global_state,
                              S_WORK if pd_state.get("work") else S_TERMINATED)
         if history:
@@ -45,8 +45,8 @@ class StatePersist(ProcessDirector, DBHandler):
         return result
 
     def set_state_data(self, aspect, data):
-        self.state_data.insert_one(dict({"aspect": aspect, "time": datetime.datetime.utcnow()}, **data))
+        self.state_data.insert_one(
+            dict({"aspect": aspect, "time": datetime.datetime.utcnow(), "by": current_process().pid}, **data))
 
     def get_state_data(self, aspect):
         return list(self.state_data.find({"aspect": aspect}).sort("time", 1))
-

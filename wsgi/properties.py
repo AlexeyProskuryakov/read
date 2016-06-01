@@ -71,10 +71,10 @@ states_address = "https://read-shlak0bl0k.rhcloud.com/rockmongo/x"
 states_user = "admin"
 states_pwd = "YsrSQnuBJGhH"
 
-osmdp = os.environ.get("OPENSHIFT_MONGODB_DB_PORT")
-osmdh = os.environ.get("OPENSHIFT_MONGODB_DB_HOST")
-print osmdh, osmdp
-states_conn_url = "mongodb://%s:%s@%s:%s/" % (states_user, states_pwd, osmdh, osmdp)
+osmdp = os.environ.get("OPENSHIFT_MONGODB_DB_PORT", 27017)
+osmdh = os.environ.get("OPENSHIFT_MONGODB_DB_HOST", "localhost")
+states_conn_url = "mongodb://%s:%s@%s:%s/read" % (states_user, states_pwd, osmdh, osmdp)
+print "states credentials: ", osmdh, osmdp, states_user, states_pwd, '\n', states_conn_url
 states_db_name = "read"
 
 SEC = 1

@@ -37,12 +37,16 @@ app.config['SESSION_TYPE'] = 'filesystem'
 def tst_to_dt(value):
     return datetime.fromtimestamp(value).strftime("%H:%M %d.%m.%Y")
 
+def to_dt(value):
+    return value.strftime("%d.%m.%Y %H:%M:%S")
 
 def array_to_string(array):
     return " ".join([str(el) for el in array])
 
 
 app.jinja_env.filters['tst_to_dt'] = tst_to_dt
+app.jinja_env.filters['to_dt'] = to_dt
+
 app.jinja_env.globals.update(array_to_string=array_to_string)
 
 if os.environ.get("test", False):

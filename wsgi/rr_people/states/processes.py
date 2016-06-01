@@ -30,20 +30,22 @@ class ProcessDirector(object):
 
     def start_aspect(self, aspect, pid):
         """
-        starting or returning False if aspect already started
-        :param aspect:
-        :param pid:
-        :return:
+        signaling that some process with @aspect and @pid was started.
+        :param aspect: name of process aspect
+        :param pid: process id
+        :return: result of starting.
         """
         with self.mutex:
             result = self.redis.setnx(PREFIX(aspect), pid)
+            log.info("Trying start %s by %s" % (aspect, pid))
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
                 if aspect_pid in get_worked_pids():
                     log.info("Setnx result is None. Stored aspect pid [%s] in worked pids. Already work!" % aspect_pid)
                     return {"state": "already work", "by": aspect_pid, "started": False}
                 else:
-                    log.info("Setnx result is None. Stored aspect pid [%s] NOT in worked pids. Will start!" % aspect_pid)
+                    log.info(
+                        "Setnx result is None. Stored aspect pid [%s] NOT in worked pids. Will start!" % aspect_pid)
                     p = self.redis.pipeline()
                     p.delete(PREFIX(aspect))
                     p.set(PREFIX(aspect), pid)
@@ -68,8 +70,8 @@ class ProcessDirector(object):
     def get_state(self, aspect, worked_pids=None):
         pid_raw = self.redis.get(PREFIX(aspect))
         result = {"aspect": aspect,}
-        wp = worked_pids or get_worked_pids()
         if pid_raw:
+            wp = worked_pids or get_worked_pids()
             pid = int(pid_raw)
             result = dict(result, **{"pid": pid, "work": pid in wp})
         else:

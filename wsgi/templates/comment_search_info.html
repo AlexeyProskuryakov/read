@@ -38,15 +38,17 @@
                             <td>state</td>
                             <td>retrieved?</td>
                             <td>found?</td>
+                            <td>by</td>
                         </tr>
                         </thead>
                         <tbody id="states">
                         {% for el in state_history %}
                         <tr>
-                            <td>{{el['time']}}</td>
+                            <td>{{el['time'] | to_dt}}</td>
                             <td>{{el['state']}}</td>
                             <td>{{el.get("retrieved", "no")}}</td>
                             <td>{{el.get("for", "no")}}</td>
+                            <td>{{el.get("by", "??")}}</td>
                         </tr>
                         {% endfor %}
                         </tbody>
