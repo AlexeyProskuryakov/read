@@ -26,7 +26,7 @@ class ProcessDirector(object):
             self.redis.flushdb()
 
         self.mutex = Lock()
-        log.info("Inited")
+        log.info("Process director inited for %s" % name)
 
     def start_aspect(self, aspect, pid):
         """
@@ -40,10 +40,11 @@ class ProcessDirector(object):
             result = self.redis.setnx(PREFIX(aspect), pid)
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
-                log.info("setnx result is None... aspect pid is: %s" % aspect_pid)
                 if aspect_pid in get_worked_pids():
+                    log.info("Setnx result is None. Pid [%s] in worked pids. Already work." % aspect_pid)
                     return {"state": "already work", "by": aspect_pid, "started": False}
                 else:
+                    log.info("Setnx result is None. Pid [%s] NOT in worked pids. Will start" % aspect_pid)
                     p = self.redis.pipeline()
                     p.delete(PREFIX(aspect))
                     p.set(PREFIX(aspect), pid)

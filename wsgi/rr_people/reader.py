@@ -15,7 +15,6 @@ from wsgi.properties import min_copy_count, \
 from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, S_END
 from wsgi.rr_people import re_url, normalize, re_crying_chars
 from wsgi.rr_people.queue import CommentQueue
-from wsgi.rr_people.states.processes import ProcessDirector
 from wsgi.rr_people.states.persist import StatePersist
 
 log = logging.getLogger("reader")
@@ -215,11 +214,12 @@ class CommentSearcher(RedditHandler):
         log.info("comment searcher inited!")
 
     def _start(self, aspect):
-        _aspect = aspect if is_cs_aspect(aspect) else cs_aspect(aspect)
-        started = self.state_persist.start_aspect(_aspect, current_process().pid)
+        _aspect = cs_aspect(aspect)
+        _pid = current_process().pid
+        started = self.state_persist.start_aspect(_aspect, _pid)
         if started.get("started"):
             self.state_persist.set_state(_aspect, S_WORK)
-            self.state_persist.set_state_data(_aspect, {"state": "started"})
+            self.state_persist.set_state_data(_aspect, {"state": "started", "by": _pid})
             return True
         return False
 

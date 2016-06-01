@@ -35,7 +35,7 @@ class WakeUp(Process):
     def __init__(self):
         super(WakeUp, self).__init__()
         self.store = WakeUpStorage("wake_up")
-        self.pd = ProcessDirector()
+        self.pd = ProcessDirector("wake up")
 
     def run(self):
         if not self.pd.start_aspect("reader_wake_up", self.pid):
