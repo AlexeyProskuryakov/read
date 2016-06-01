@@ -44,7 +44,9 @@ class ProcessDirector(object):
             log.info("Trying start %s by %s" % (aspect, pid))
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
-                if aspect_pid in get_worked_pids():
+                worked_pids = get_worked_pids()
+                log.info("worked pids: \n[%s]" % worked_pids)
+                if aspect_pid in worked_pids:
                     log.info("Setnx result is None. Stored aspect pid [%s] in worked pids. Already work!" % aspect_pid)
                     return {"state": "already work", "by": aspect_pid, "started": False}
                 else:
@@ -56,7 +58,7 @@ class ProcessDirector(object):
                     p.execute()
                     return {"state": "restarted", "started": True}
             else:
-                log.info("Setnx result is: [%s]. Will start!"%result)
+                log.info("Setnx result is: [%s]. Will start!" % result)
                 return {"state": "started", "started": True}
 
     def stop_aspect(self, aspect):
