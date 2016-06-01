@@ -68,5 +68,10 @@ def get_worked_pids():
             if len(process_info) > 10:
                 yield process_info[1], process_info[10]
 
-    worked_pids = set(map(int, map(lambda x: x[0], filter(lambda y: WORKED_PIDS_QUERY in y[1], get_all_pids()))))
+    worked_pids = set(
+        map(int,
+            map(
+                lambda x: x[0],
+                filter(lambda y: WORKED_PIDS_QUERY in y[1],
+                       get_all_pids()))))
     return worked_pids

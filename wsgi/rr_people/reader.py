@@ -217,7 +217,7 @@ class CommentSearcher(RedditHandler):
         _aspect = cs_aspect(aspect)
         _pid = current_process().pid
         started = self.state_persist.start_aspect(_aspect, _pid)
-        if started.get("started"):
+        if started.get("started", False):
             self.state_persist.set_state(_aspect, S_WORK)
             self.state_persist.set_state_data(_aspect, {"state": "started", "by": _pid})
             return True

@@ -36,21 +36,21 @@ class ProcessDirector(object):
         :return:
         """
         with self.mutex:
-            log.info("will start aspect %s for %s" % (aspect, pid))
             result = self.redis.setnx(PREFIX(aspect), pid)
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
                 if aspect_pid in get_worked_pids():
-                    log.info("Setnx result is None. Pid [%s] in worked pids. Already work." % aspect_pid)
+                    log.info("Setnx result is None. Stored aspect pid [%s] in worked pids. Already work!" % aspect_pid)
                     return {"state": "already work", "by": aspect_pid, "started": False}
                 else:
-                    log.info("Setnx result is None. Pid [%s] NOT in worked pids. Will start" % aspect_pid)
+                    log.info("Setnx result is None. Stored aspect pid [%s] NOT in worked pids. Will start!" % aspect_pid)
                     p = self.redis.pipeline()
                     p.delete(PREFIX(aspect))
                     p.set(PREFIX(aspect), pid)
                     p.execute()
                     return {"state": "restarted", "started": True}
             else:
+                log.info("Setnx result is: %s. Will start!")
                 return {"state": "started", "started": True}
 
     def stop_aspect(self, aspect):
