@@ -34,11 +34,10 @@ class ProcessStatesPersist(ProcessDirector, DBHandler):
     def set_state(self, aspect, state):
         return self.redis.hset(HASH_STATES, aspect, state)
 
-    def get_state(self, aspect, history=False, worked_pids=None):
+    def get_process_state(self, aspect, history=False, worked_pids=None):
         global_state = self.redis.hget(HASH_STATES, aspect)
-        pd_state = super(ProcessStatesPersist, self).get_state(aspect, worked_pids=worked_pids)
-        result = StateObject(global_state,
-                             S_WORK if pd_state.get("work") else S_TERMINATED)
+        mutex_state = super(ProcessStatesPersist, self).get_process_state(aspect, worked_pids=worked_pids)
+        result = StateObject(global_state, mutex_state)
         if history:
             result.history = self.get_state_data(aspect)
 

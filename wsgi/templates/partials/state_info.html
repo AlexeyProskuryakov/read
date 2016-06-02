@@ -1,0 +1,18 @@
+<div class="state-info">
+    <table>
+        <tbody>
+        <tr>
+            <td>
+                <small>Мьютекс выставлен для:</small>
+            </td>
+            <td>{{process_state.mutex_state.get('pid', '')}}</td>
+        </tr>
+        <tr>
+            <td>
+                <small>Жив ли на текущей машине:</small>
+            </td>
+            <td>{{process_state.mutex_state.get("work", "нет")}}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>

@@ -156,7 +156,7 @@ def main():
 def start_comment_search(sub):
     comment_queue.need_comment(sub)
     while 1:
-        state = state_persist.get_state(cs_aspect(sub))
+        state = state_persist.get_process_state(cs_aspect(sub))
         if state.mutex_state and S_WORK in state.mutex_state:
             return jsonify({"global": state.global_state, "mutex": state.mutex_state, "history": state.history})
         time.sleep(1)
@@ -176,7 +176,7 @@ def comments():
     subs_states = {}
     wp = get_worked_pids()
     for sub in subs_names:
-        subs_states[sub] = state_persist.get_state(cs_aspect(sub), worked_pids=wp)
+        subs_states[sub] = state_persist.get_process_state(cs_aspect(sub), worked_pids=wp)
 
     return render_template("comments.html", **{"subs_states": subs_states})
 
@@ -200,7 +200,7 @@ def comment_search_info(sub):
             posts[i] = post
 
     posts_commented = comment_storage.get_posts_commented(sub)
-    process_state = state_persist.get_state(cs_aspect(sub), history=True)
+    process_state = state_persist.get_process_state(cs_aspect(sub), history=True)
     cs_state = comment_searcher.state_storage.get_state(sub)
 
     result = {"posts_found_comment_text": posts,
