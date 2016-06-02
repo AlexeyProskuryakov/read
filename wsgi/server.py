@@ -200,18 +200,15 @@ def comment_search_info(sub):
             posts[i] = post
 
     posts_commented = comment_storage.get_posts_commented(sub)
-    subs = db.get_all_humans_subs()
-
-    text_state = state_persist.get_state(cs_aspect(sub), history=True)
-    state = comment_searcher.state_storage.get_state(cs_aspect(sub))
+    process_state = state_persist.get_state(cs_aspect(sub), history=True)
+    cs_state = comment_searcher.state_storage.get_state(sub)
 
     result = {"posts_found_comment_text": posts,
               "posts_commented": posts_commented,
               "sub": sub,
-              "a_subs": subs,
-              "text_state": text_state,
-              "state_history": text_state.history,
-              "state": state
+              "process_state": process_state,
+              "state_history": process_state.history,
+              "state": cs_state
               }
     return render_template("comment_search_info.html", **result)
 

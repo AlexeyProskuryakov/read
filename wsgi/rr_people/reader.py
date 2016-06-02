@@ -15,7 +15,7 @@ from wsgi.properties import min_copy_count, \
 from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, S_END
 from wsgi.rr_people import re_url, normalize, re_crying_chars
 from wsgi.rr_people.queue import CommentQueue
-from wsgi.rr_people.states.persist import StatePersist
+from wsgi.rr_people.states.persist import ProcessStatesPersist
 
 log = logging.getLogger("reader")
 
@@ -207,7 +207,7 @@ class CommentSearcher(RedditHandler):
         self.comment_storage = CommentsStorage(name="comment_searcher")
         self.comment_queue = CommentQueue(name="comment_searcher")
         self.state_storage = CommentFounderStateStorage(name="comment_searcher")
-        self.state_persist = StatePersist(name="comment_searcher")
+        self.state_persist = ProcessStatesPersist(name="comment_searcher")
         self.processes = {}
 
         self.start_supply_comments()

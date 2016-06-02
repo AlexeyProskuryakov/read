@@ -18,7 +18,7 @@ STATE = lambda x: "state_%s" % (x)
 STATE_TASK = "STATE_TASKS"
 
 
-class StatePersist(ProcessDirector, DBHandler):
+class ProcessStatesPersist(ProcessDirector, DBHandler):
     def __init__(self, name="?", clear=False, max_connections=2):
         ProcessDirector.__init__(self, "state persist %s" % name, clear, max_connections)
         DBHandler.__init__(self, "state persist %s" % name, uri=states_conn_url, db_name=states_db_name)
@@ -36,7 +36,7 @@ class StatePersist(ProcessDirector, DBHandler):
 
     def get_state(self, aspect, history=False, worked_pids=None):
         global_state = self.redis.hget(HASH_STATES, aspect)
-        pd_state = super(StatePersist, self).get_state(aspect, worked_pids=worked_pids)
+        pd_state = super(ProcessStatesPersist, self).get_state(aspect, worked_pids=worked_pids)
         result = StateObject(global_state,
                              S_WORK if pd_state.get("work") else S_TERMINATED)
         if history:
