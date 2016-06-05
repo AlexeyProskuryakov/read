@@ -45,7 +45,7 @@ class ProcessDirector(object):
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
                 worked_pids = get_worked_pids()
-                log.info("worked pids: [%s]" % worked_pids)
+                log.info("worked pids: %s" % worked_pids)
                 if aspect_pid in worked_pids:
                     log.info("Stored aspect pid [%s] in worked pids. Already work!" % aspect_pid)
                     return {"state": "already work", "by": aspect_pid, "started": False}

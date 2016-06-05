@@ -67,11 +67,14 @@ log = logging.getLogger("states")
 def get_worked_pids():
     def get_all_pids():
         result = check_output(["ps", "aux"]).split('\n')
+        log.info("result:\n%s" % result)
         for el in result:
             process_info = el.split()
             if len(process_info) > 10 and WORKED_PIDS_QUERY in process_info[10]:
-                log.info("%s : %s" % (process_info[1], process_info[10]))
+                log.info("OK: %s" % process_info)
                 yield int(process_info[1])
+            else:
+                log.info("BAD: %s" % process_info)
 
     worked_pids = set(list(get_all_pids()))
     return worked_pids
