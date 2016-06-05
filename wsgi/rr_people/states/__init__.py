@@ -69,16 +69,9 @@ def get_worked_pids():
         result = check_output(["ps", "aux"]).split('\n')
         for el in result:
             process_info = el.split()
-            if len(process_info) > 10:
-                # log.info("OK: %s %s" % (process_info[1], process_info[10]))
-                yield process_info[1], process_info[10]
-            # else:
-                # log.info("BAD: %s" % el)
+            if len(process_info) > 10 and WORKED_PIDS_QUERY in process_info[10]:
+                log.info("%s : %s" % (process_info[1], process_info[10]))
+                yield int(process_info[1])
 
-    worked_pids = set(
-        map(int,
-            map(
-                lambda x: x[0],
-                filter(lambda y: WORKED_PIDS_QUERY in y[1],
-                       get_all_pids()))))
+    worked_pids = set(list(get_all_pids()))
     return worked_pids

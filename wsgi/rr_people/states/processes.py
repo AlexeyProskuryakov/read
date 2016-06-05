@@ -45,20 +45,19 @@ class ProcessDirector(object):
             if not result:
                 aspect_pid = int(self.redis.get(PREFIX(aspect)))
                 worked_pids = get_worked_pids()
-                log.info("worked pids: \n[%s]" % worked_pids)
+                log.info("worked pids: [%s]" % worked_pids)
                 if aspect_pid in worked_pids:
-                    log.info("Setnx result is None. Stored aspect pid [%s] in worked pids. Already work!" % aspect_pid)
+                    log.info("Stored aspect pid [%s] in worked pids. Already work!" % aspect_pid)
                     return {"state": "already work", "by": aspect_pid, "started": False}
                 else:
-                    log.info(
-                        "Setnx result is None. Stored aspect pid [%s] NOT in worked pids. Will start!" % aspect_pid)
+                    log.info("Stored aspect pid [%s] NOT in worked pids. Will start!" % aspect_pid)
                     p = self.redis.pipeline()
                     p.delete(PREFIX(aspect))
                     p.set(PREFIX(aspect), pid)
                     p.execute()
                     return {"state": "restarted", "started": True}
             else:
-                log.info("Setnx result is: [%s]. Will start!" % result)
+                log.info("Will start! (%s)" % result)
                 return {"state": "started", "started": True}
 
     def stop_aspect(self, aspect):
