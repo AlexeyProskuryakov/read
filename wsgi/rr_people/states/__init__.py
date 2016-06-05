@@ -65,7 +65,6 @@ log = logging.getLogger("states")
 
 
 def get_worked_pids():
-    log.info("WPQ: [%s]"%WORKED_PIDS_QUERY)
     def check_contains(l, s):
         for el in l:
             if s in el:
@@ -73,14 +72,10 @@ def get_worked_pids():
 
     def get_all_pids():
         result = check_output(["ps", "aux"]).split('\n')
-        # log.info("result:\n%s" % result)
         for el in result:
             process_info = el.split()
             if len(process_info) > 10 and check_contains(process_info, WORKED_PIDS_QUERY):
-                log.info("OK: %s" % process_info)
                 yield int(process_info[1])
-            else:
-                log.info("BAD: %s" % process_info)
 
     worked_pids = set(list(get_all_pids()))
     return worked_pids

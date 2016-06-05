@@ -169,6 +169,13 @@ def reset_comment_searcher_state(sub):
     return jsonify({"ok": True})
 
 
+@app.route("/comment_search/clear_process_log/<sub>", methods=["POST"])
+@login_required
+def cleat_process_log(sub):
+    comment_searcher.state_persist.clear(cs_aspect(sub))
+    return jsonify({"ok": True})
+
+
 @app.route("/comments")
 @login_required
 def comments():
