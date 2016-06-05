@@ -65,6 +65,7 @@ log = logging.getLogger("states")
 
 
 def get_worked_pids():
+    log.info("WPQ: [%s]"%WORKED_PIDS_QUERY)
     def check_contains(l, s):
         for el in l:
             if s in el:
