@@ -158,7 +158,7 @@ def start_comment_search(sub):
     while 1:
         state = state_persist.get_process_state(cs_aspect(sub))
         if state.mutex_state and S_WORK in state.mutex_state:
-            return jsonify({"global": state.global_state, "mutex": state.mutex_state, "history": state.history})
+            return jsonify({"global": state.global_state, "mutex": state.mutex_state})
         time.sleep(1)
 
 

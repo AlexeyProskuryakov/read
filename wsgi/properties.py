@@ -17,8 +17,6 @@ def module_path():
     return os.path.dirname(__file__)
 
 
-log_file_f = lambda x: os.path.join(module_path(), (x if x else "") + 'result.log')
-log_file = os.path.join(module_path(), 'result.log')
 cacert_file = os.path.join(module_path(), 'cacert.pem')
 
 logger = logging.getLogger()
@@ -32,15 +30,13 @@ sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 logger.addHandler(sh)
 
-fh = logging.FileHandler(log_file)
-fh.setFormatter(formatter)
-logger.addHandler(fh)
+# log_file_f = lambda x: os.path.join(module_path(), (x if x else "") + 'result.log')
+# log_file = os.path.join(module_path(), 'result.log')
+# fh = logging.FileHandler(log_file)
+# fh.setFormatter(formatter)
+# fh.setFormatter(formatter_process)
+# logger.addHandler(fh)
 
-fh.setFormatter(formatter_process)
-
-fh_human = logging.FileHandler(log_file_f("he_"))
-fh_human.setFormatter(formatter_human)
-logging.getLogger("he").addHandler(fh_human)
 
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
