@@ -139,21 +139,6 @@ class CommentsStorage(DBHandler):
         else:
             self.comments = self.db.get_collection("comments")
 
-    def set_post_commented(self, post_fullname, by, hash):
-        found = self.comments.find_one({"fullname": post_fullname, "commented": {"$exists": False}})
-        if not found:
-            to_add = {"fullname": post_fullname, "commented": True, "time": time.time(), "text_hash": hash, "by": by}
-            self.comments.insert_one(to_add)
-        else:
-            to_set = {"commented": True, "text_hash": hash, "by": by, "time": time.time(),
-                      "low_copies": datetime.utcnow()}
-            self.comments.update_one({"fullname": post_fullname}, {"$set": to_set})
-
-    def can_comment_post(self, who, post_fullname, hash):
-        q = {"by": who, "commented": True, "$or": [{"fullname": post_fullname}, {"text_hash": hash}]}
-        found = self.comments.find_one(q)
-        return found is None
-
     def set_post_ready_for_comment(self, post_fullname, sub, comment_text, permalink):
         found = self.comments.find_one({"fullname": post_fullname})
         if found:
