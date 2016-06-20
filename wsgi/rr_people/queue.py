@@ -36,11 +36,6 @@ class CommentQueue():
         log.debug("redis: push to %s %s" % (sbrdt, post_fn))
         self.redis.rpush(QUEUE_CF(sbrdt), post_fn)
 
-    def pop_comment(self, sbrdt):
-        result = self.redis.lpop(QUEUE_CF(sbrdt))
-        log.debug("redis: get by %s\nthis: %s" % (sbrdt, result))
-        return result
-
     def get_all_comments_post_ids(self, sbrdt):
         result = self.redis.lrange(QUEUE_CF(sbrdt), 0, -1)
         return list(result)

@@ -20,7 +20,6 @@ STATE_TASK = "STATE_TASKS"
 
 class ProcessStatesPersist(ProcessDirector, DBHandler):
     def __init__(self, name="?", clear=False, max_connections=2):
-        ProcessDirector.__init__(self, "state persist %s" % name, clear, max_connections)
         DBHandler.__init__(self, "state persist %s" % name, uri=states_conn_url, db_name=states_db_name)
 
         log.info("State persist [ %s | %s ] inited for [%s]" % (cfs_redis_address, states_conn_url, name))
@@ -30,9 +29,6 @@ class ProcessStatesPersist(ProcessDirector, DBHandler):
             self.state_data.create_index([("time", pymongo.DESCENDING)], background=True)
         except Exception as e:
             self.state_data = self.db.get_collection("state_data")
-
-    def set_state(self, aspect, state):
-        return self.redis.hset(HASH_STATES, aspect, state)
 
     def get_process_state(self, aspect, history=False, worked_pids=None):
         global_state = self.redis.hget(HASH_STATES, aspect)
