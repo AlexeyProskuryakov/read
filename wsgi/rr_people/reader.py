@@ -135,12 +135,11 @@ class CommentsStorage(DBHandler):
 
             self.comments.create_index([("fullname", 1)], unique=True)
             self.comments.create_index([("state", 1)], sparse=True)
-            self.comments.create_index([("text_hash", 1)], sparse=True)
             self.comments.create_index([("sub", 1)], sparse=True)
         else:
             self.comments = self.db.get_collection("comments")
 
-    def set_post_ready_for_comment(self, post_fullname, sub, comment_text, permalink):
+    def set_comment_info_ready(self, post_fullname, sub, comment_text, permalink):
         found = self.comments.find_one({"fullname": post_fullname})
         if found:
             return
@@ -302,8 +301,8 @@ class CommentSearcher(RedditHandler):
                                     comment.body, post, post.fullname, sub))
                                 break
 
-                    if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, comment.body,
-                                                                                   post.permalink):
+                    if comment and self.comment_storage.set_comment_info_ready(post.fullname, comment.body,
+                                                                               post.permalink):
                         self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                         yield post.fullname
 
