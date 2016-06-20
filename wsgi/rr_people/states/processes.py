@@ -1,12 +1,10 @@
 # coding:utf-8
 import logging
-from multiprocessing.queues import Queue, JoinableQueue
-from multiprocessing.synchronize import Lock, RLock
+from multiprocessing.synchronize import RLock
 
 import redis
 
 from wsgi.properties import cfs_redis_address, cfs_redis_port, cfs_redis_password
-from wsgi.rr_people import Singleton
 from wsgi.rr_people.states import get_worked_pids
 
 log = logging.getLogger("process_director")
