@@ -117,6 +117,10 @@ class CommentFounderStateStorage(object):
         return
 
 
+CS_COMMENTED = "commented"
+CS_READY_FOR_COMMENT = "ready_for_comment"
+
+
 class CommentsStorage(DBHandler):
     def __init__(self, name="?"):
         super(CommentsStorage, self).__init__(name=name, uri=comments_mongo_uri, db_name=comments_db_name)
@@ -132,8 +136,7 @@ class CommentsStorage(DBHandler):
             self.comments.drop_indexes()
 
             self.comments.create_index([("fullname", 1)], unique=True)
-            self.comments.create_index([("commented", 1)], sparse=True)
-            self.comments.create_index([("ready_for_comment", 1)], sparse=True)
+            self.comments.create_index([("state", 1)], sparse=True)
             self.comments.create_index([("text_hash", 1)], sparse=True)
             self.comments.create_index([("sub", 1)], sparse=True)
         else:
@@ -146,27 +149,18 @@ class CommentsStorage(DBHandler):
         else:
             return self.comments.insert_one(
                 {"fullname": post_fullname,
-                 "ready_for_comment": True,
+                 "state": CS_READY_FOR_COMMENT,
                  "sub": sub,
                  "text": comment_text,
-                 "post_url": permalink})
+                 "post_url": permalink}
+            )
 
     def get_posts_ready_for_comment(self, sub=None):
-        q = {"ready_for_comment": True, "commented": {"$exists": False}}
-        if sub:
-            q['sub'] = sub
+        q = {"state": CS_READY_FOR_COMMENT, "sub": sub}
         return list(self.comments.find(q))
 
-    def get_post(self, post_fullname):
-        found = self.comments.find_one({"fullname": post_fullname})
-        return found
-
-    def get_posts_commented(self, by=None, sub=None):
-        q = {"commented": True}
-        if by:
-            q["by"] = by
-        if sub:
-            q['sub'] = sub
+    def get_posts_commented(self, sub):
+        q = {"state": CS_COMMENTED, "sub": sub}
         return list(self.comments.find(q))
 
     def get_posts(self, posts_fullnames):
@@ -310,7 +304,7 @@ class CommentSearcher(RedditHandler):
                                     comment.body, post, post.fullname, sub))
                                 break
 
-                    if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, sub, comment.body,
+                    if comment and self.comment_storage.set_post_ready_for_comment(post.fullname, comment.body,
                                                                                    post.permalink):
                         self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                         yield post.fullname

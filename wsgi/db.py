@@ -1,12 +1,10 @@
 # coding=utf-8
 import hashlib
 import logging
-import time
-from datetime import datetime
 
 from pymongo import MongoClient
 
-from wsgi.properties import mongo_uri, db_name, TIME_TO_WAIT_NEW_COPIES
+from wsgi.properties import mongo_uri, db_name
 
 __author__ = 'alesha'
 
