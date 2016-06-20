@@ -125,8 +125,6 @@ class CommentsStorage(DBHandler):
     def __init__(self, name="?"):
         super(CommentsStorage, self).__init__(name=name, uri=comments_mongo_uri, db_name=comments_db_name)
         collections_names = self.db.collection_names(include_system_collections=False)
-
-        self.comments = self.db.get_collection("comments")
         if "comments" not in collections_names:
             self.comments = self.db.create_collection(
                 "comments",
@@ -161,7 +159,7 @@ class CommentsStorage(DBHandler):
 
     def get_posts_commented(self, sub):
         q = {"state": CS_COMMENTED, "sub": sub}
-        return list(self.comments.find(q))
+        return list(self.comments.find(q).sort({"time": -1}))
 
     def get_posts(self, posts_fullnames):
         for el in self.comments.find({"fullname": {"$in": posts_fullnames}},

@@ -21,7 +21,8 @@
 
             <br>
             <hr>
-            <h3><small>Состояние поиска:</small>
+            <h3>
+                <small>Состояние поиска:</small>
                 <span id="{{sub}}-st">{{process_state.global_state}}</span>
                 {% include "partials/state_info.html"%}
                 <button class="btn btn-primary" type="button" data-toggle="collapse"
@@ -166,6 +167,9 @@
                         </td>
                         <td>
                             {{post.get('by')}}
+                        </td>
+                        <td>
+                            {{post.get('time') | tst_to_dt}}
                         </td>
                     </tr>
                     {% endfor %}
