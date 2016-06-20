@@ -21,6 +21,7 @@ STATE_TASK = "STATE_TASKS"
 class ProcessStatesPersist(ProcessDirector, DBHandler):
     def __init__(self, name="?", clear=False, max_connections=2):
         DBHandler.__init__(self, "state persist %s" % name, uri=states_conn_url, db_name=states_db_name)
+        ProcessDirector.__init__(self, "state_persist %s" % name)
 
         log.info("State persist [ %s | %s ] inited for [%s]" % (cfs_redis_address, states_conn_url, name))
         try:
@@ -48,3 +49,8 @@ class ProcessStatesPersist(ProcessDirector, DBHandler):
 
     def get_state_data(self, aspect):
         return list(self.state_data.find({"aspect": aspect}).sort("time", -1))
+
+
+if __name__ == '__main__':
+    psp = ProcessStatesPersist()
+    print psp.get_process_state("test", history=True)
