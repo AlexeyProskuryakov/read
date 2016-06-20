@@ -17,8 +17,6 @@ PREFIX_GET_DATA = lambda x: x.replace("PD_", "") if isinstance(x, (str, unicode)
 
 
 class ProcessDirector(object):
-    __metaclass__ = Singleton
-
     def __init__(self, name="?", clear=False, max_connections=2):
         self.redis = redis.StrictRedis(host=cfs_redis_address,
                                        port=cfs_redis_port,

@@ -19,7 +19,7 @@ STATE_TASK = "STATE_TASKS"
 
 
 class ProcessStatesPersist(ProcessDirector, DBHandler):
-    def __init__(self, name="?", clear=False, max_connections=2):
+    def __init__(self, name="?", clear=False):
         DBHandler.__init__(self, "state persist %s" % name, uri=states_conn_url, db_name=states_db_name)
         ProcessDirector.__init__(self, "state_persist %s" % name)
 
