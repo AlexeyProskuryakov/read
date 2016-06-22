@@ -120,23 +120,19 @@ class CommentFounderStateStorage(object):
 CS_COMMENTED = "commented"
 CS_READY_FOR_COMMENT = "ready_for_comment"
 
+_comments = "comments"
 
 class CommentsStorage(DBHandler):
     def __init__(self, name="?"):
         super(CommentsStorage, self).__init__(name=name, uri=comments_mongo_uri, db_name=comments_db_name)
         collections_names = self.db.collection_names(include_system_collections=False)
-        if "comments" not in collections_names:
-            self.comments = self.db.create_collection(
-                "comments",
-            )
-            self.comments.drop_indexes()
-
+        if _comments not in collections_names:
+            self.comments = self.db.create_collection(_comments)
             self.comments.create_index([("fullname", 1)])
             self.comments.create_index([("state", 1)], sparse=True)
             self.comments.create_index([("sub", 1)], sparse=True)
         else:
-            self.comments = self.db.get_collection("comments")
-
+            self.comments = self.db.get_collection(_comments)
     def set_comment_info_ready(self, post_fullname, sub, comment_text, permalink):
         return self.comments.insert_one(
             {"fullname": post_fullname,
@@ -295,8 +291,8 @@ class CommentSearcher(RedditHandler):
                                     comment.body, post, post.fullname, sub))
                                 break
 
-                    if comment and self.comment_storage.set_comment_info_ready(post.fullname, comment.body,
-                                                                               post.permalink):
+                    if comment:
+                        self.comment_storage.set_comment_info_ready(post.fullname, sub, comment.body, post.permalink)
                         self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                         yield post.fullname
 

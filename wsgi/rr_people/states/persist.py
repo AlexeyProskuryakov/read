@@ -6,7 +6,6 @@ import pymongo
 
 from wsgi.db import DBHandler
 from wsgi.properties import cfs_redis_address, states_db_name, states_conn_url
-from wsgi.rr_people import S_WORK, S_TERMINATED
 from wsgi.rr_people.states import StateObject
 from wsgi.rr_people.states.processes import ProcessDirector
 
