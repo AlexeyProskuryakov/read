@@ -1,5 +1,6 @@
 # coding=utf-8
 import os
+import re
 import signal
 import time
 from datetime import datetime
@@ -218,6 +219,21 @@ def comment_search_info(sub):
               "state": cs_state
               }
     return render_template("comment_search_info.html", **result)
+
+
+splitter = re.compile("[^\w\d]+")
+
+
+@app.route("/exclude")
+@login_required
+def exclude():
+    if request.method == "POST":
+        words = request.form.get("words")
+        words = splitter.split(words)
+        comment_storage.set_words_exclude(words)
+
+    words = comment_storage.get_words_exclude()
+    return render_template("exclude.html", **{"words": words.values()})
 
 
 if __name__ == '__main__':

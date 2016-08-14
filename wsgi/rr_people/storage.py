@@ -1,10 +1,12 @@
 from wsgi.db import DBHandler
 from wsgi.properties import comments_mongo_uri, comments_db_name
+from wsgi.rr_people import hash_word
 
 CS_COMMENTED = "commented"
 CS_READY_FOR_COMMENT = "ready_for_comment"
 
 _comments = "comments"
+
 
 class CommentsStorage(DBHandler):
     def __init__(self, name="?"):
@@ -17,6 +19,26 @@ class CommentsStorage(DBHandler):
             self.comments.create_index([("sub", 1)], sparse=True)
         else:
             self.comments = self.db.get_collection(_comments)
+
+        words_exclude = "words_exclude"
+        if words_exclude not in collections_names:
+            self.words_exclude = self.db.create_collection(words_exclude)
+            self.words_exclude.create_index([("hash", 1)], unique=True)
+        else:
+            self.words_exclude = self.db.get_collection(words_exclude)
+
+    def set_words_exclude(self, new_words):
+        new_words_hashes = dict(map(lambda x: (hash_word(x), x), new_words))
+        for old_word in self.words_exclude.find({}, projection={"hash": 1}):
+            if old_word['hash'] in new_words_hashes:
+                del new_words_hashes[old_word['hash']]
+
+        to_insert = map(lambda x: {"hash": x[0], "raw": x[1]},
+                        [(hash, raw) for hash, raw in new_words_hashes.iteritems()])
+        self.words_exclude.insert_many(to_insert, ordered=False)
+
+    def get_words_exclude(self):
+        return dict(map(lambda x: (x['hash'], x['raw']), self.words_exclude.find()))
 
     def set_comment_info_ready(self, post_fullname, sub, comment_text, permalink):
         return self.comments.insert_one(
@@ -39,4 +61,3 @@ class CommentsStorage(DBHandler):
         for el in self.comments.find({"fullname": {"$in": posts_fullnames}},
                                      projection={"text": True, "fullname": True, "post_url": True}):
             yield el
-

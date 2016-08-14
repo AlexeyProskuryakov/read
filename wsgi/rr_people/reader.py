@@ -1,6 +1,7 @@
 # coding=utf-8
 import json
 import logging
+import re
 import time
 from datetime import datetime
 from multiprocessing import Process
@@ -13,7 +14,7 @@ from wsgi.properties import min_copy_count, \
     shift_copy_comments_part, min_donor_comment_ups, max_donor_comment_ups, \
     comments_mongo_uri, comments_db_name, DEFAULT_LIMIT, cfs_redis_address, cfs_redis_port, cfs_redis_password
 from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, S_END
-from wsgi.rr_people import re_url, normalize, re_crying_chars
+from wsgi.rr_people import normalize
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.states.persist import ProcessStatesPersist
 from wsgi.rr_people.storage import CommentsStorage
@@ -23,13 +24,6 @@ log = logging.getLogger("reader")
 
 def _so_long(created, min_time):
     return (datetime.utcnow() - datetime.fromtimestamp(created)).total_seconds() > min_time
-
-
-def is_good_text(text):
-    return len(re_url.findall(text)) == 0 and \
-           len(text) > 15 and \
-           len(text) < 120 and \
-           "Edit" not in text
 
 
 PERSIST_STATE = lambda x: "load_state_%s" % x
@@ -118,10 +112,24 @@ class CommentFounderStateStorage(object):
         return
 
 
-
 cs_aspect = lambda x: "CS_%s" % x
 is_cs_aspect = lambda x: x.count("CS_") == 1
 cs_sub = lambda x: x.replace("CS_", "") if isinstance(x, (str, unicode)) and is_cs_aspect(x) else x
+
+re_url = re.compile("((https?|ftp)://|www\.)[^\s/$.?#].[^\s]*")
+re_crying_chars = re.compile("[A-Z]{2,}")
+re_answer = re.compile("\> .*\n?")
+re_slash = re.compile("/?r/\S+")
+
+
+def is_good_text(text):
+    return len(text) >= 15 and \
+           len(text) <= 140 and \
+           len(re_url.findall(text)) == 0 and \
+           len(re_crying_chars.findall(text)) == 0 and \
+           len(re_answer.findall(text)) == 0 and \
+           len(re_slash.findall(text)) == 0 and \
+           "Edit" not in text
 
 
 class CommentSearcher(RedditHandler):
@@ -140,6 +148,9 @@ class CommentSearcher(RedditHandler):
         self.processes = {}
 
         self.start_supply_comments()
+
+        self._exclude_words = self.comment_storage.get_words_exclude()
+
         log.info("comment searcher inited!")
 
     def _start(self, aspect):
@@ -295,13 +306,16 @@ class CommentSearcher(RedditHandler):
         """
         if is_good_text(text):
             c_tokens = set(normalize(text, lambda x: x))
-            if (float(len(c_tokens)) / 100) * 20 >= len(re_crying_chars.findall(text)):
-                for p_comment in self.get_all_comments(post):
-                    p_text = p_comment.body
-                    if is_good_text(p_text):
-                        p_tokens = set(normalize(p_text, lambda x: x))
-                        if len(c_tokens) == len(p_tokens) and len(p_tokens.intersection(c_tokens)) == len(p_tokens):
-                            log.info("found similar text [%s] in post %s" % (c_tokens, post.fullname))
-                            return False
-                self.clear_cache(post)
-                return True
+            for token in c_tokens:
+                if hash(token) in self._exclude_words:
+                    return False
+
+            for p_comment in self.get_all_comments(post):
+                p_text = p_comment.body
+                if is_good_text(p_text):
+                    p_tokens = set(normalize(p_text, lambda x: x))
+                    if len(c_tokens) == len(p_tokens) and len(p_tokens.intersection(c_tokens)) == len(p_tokens):
+                        log.info("found similar text [%s] in post %s" % (c_tokens, post.fullname))
+                        return False
+            self.clear_cache(post)
+            return True

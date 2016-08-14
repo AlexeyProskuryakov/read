@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <div id="exclude" class="col-md-offset-3">
+        <textarea name="words" rows="10">
+            {%for word in words%}
+            {{word}}
+            {%endfor%}
+        </textarea>
+            <div class="form-group">
+                <div class="col-md-12">
+                    <button class="submit btn btn-info btn-lg" type="submit">Постановить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+{% endblock %}

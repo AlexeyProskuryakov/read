@@ -57,10 +57,8 @@ S_SUSPEND = "suspend"
 S_TERMINATED = "terminated"
 S_END = "end"
 
-re_url = re.compile("((https?|ftp)://|www\.)[^\s/$.?#].[^\s]*")
-re_crying_chars = re.compile("[A-Z!]{2,}")
-
 log = logging.getLogger("man")
+
 
 class RedditHandler(object):
     def __init__(self, user_agent=None):
@@ -155,18 +153,23 @@ def normalize(comment_body, serialise=lambda x: " ".join(x)):
     return serialise(res)
 
 
+def hash_word(word):
+    return hash(stem(word))
+
+
 def tokens_equals(tokens, another_tokens, more_than_perc=50):
     o = set(tokens)
     t = set(another_tokens)
     intersection = o.intersection(t)
     return float(len(intersection)) >= ((float(len(o) + len(t)) / 2) * more_than_perc) / 100
 
+
 def cmp_by_created_utc(x, y):
     return int(x.created_utc - y.created_utc)
 
+
 def cmp_by_comments_count(x, y):
     return x.num_comments - y.num_comments
-
 
 
 def post_to_dict(post):
