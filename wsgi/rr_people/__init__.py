@@ -4,6 +4,7 @@ import re
 
 
 import praw
+import time
 from praw.objects import MoreComments
 from stemming.porter2 import stem
 
@@ -59,12 +60,37 @@ S_END = "end"
 
 log = logging.getLogger("man")
 
+POSTS_TTL = 60 * 10
+
+class _RedditPostsCache():
+    __metaclass__ = Singleton
+
+    def __init__(self):
+        self._posts_cache = {}
+        self._posts_cache_timings = {}
+
+    def get_posts(self, sub):
+        if sub in self._posts_cache:
+            if (self._posts_cache_timings.get(sub) - time.time()) < POSTS_TTL:
+                return self._posts_cache[sub]
+            else:
+                del self._posts_cache[sub]
+                del self._posts_cache_timings[sub]
+                return None
+        else:
+            return None
+
+    def set_posts(self, sub, posts):
+        self._posts_cache[sub] = posts
+        self._posts_cache_timings[sub] = time.time()
+
 
 class RedditHandler(object):
     def __init__(self, user_agent=None):
         self.reddit = praw.Reddit(user_agent=user_agent or random.choice(USER_AGENTS))
         self.subreddits_cache = {}
         self.posts_comments_cache = {}
+        self.posts_cache = _RedditPostsCache()
 
     def get_subreddit(self, name):
         if name not in self.subreddits_cache:
@@ -76,17 +102,21 @@ class RedditHandler(object):
 
     def get_hot_and_new(self, subreddit_name, sort=None, limit=properties.DEFAULT_LIMIT):
         try:
-            subreddit = self.get_subreddit(subreddit_name)
-            hot = list(subreddit.get_hot(limit=limit))
-            log.info("%s hot loaded limit: %s, result: %s" % (subreddit_name, limit, len(hot)))
-            new = list(subreddit.get_new(limit=limit))
-            log.info("%s new loaded limit: %s, result: %s" % (subreddit_name, limit, len(new)))
-            result_dict = dict(map(lambda x: (x.fullname, x), hot), **dict(map(lambda x: (x.fullname, x), new)))
 
-            log.info("Will search for dest posts candidates at %s posts in %s" % (len(result_dict), subreddit_name))
-            result = result_dict.values()
-            if sort:
-                result.sort(cmp=sort)
+            result = self.posts_cache.get_posts(subreddit_name)
+            if not result:
+                subreddit = self.get_subreddit(subreddit_name)
+                hot = list(subreddit.get_hot(limit=limit))
+                log.info("%s hot loaded limit: %s, result: %s" % (subreddit_name, limit, len(hot)))
+                new = list(subreddit.get_new(limit=limit))
+                log.info("%s new loaded limit: %s, result: %s" % (subreddit_name, limit, len(new)))
+                result_dict = dict(map(lambda x: (x.fullname, x), hot), **dict(map(lambda x: (x.fullname, x), new)))
+
+                log.info("Will search for dest posts candidates at %s posts in %s" % (len(result_dict), subreddit_name))
+                result = result_dict.values()
+                if sort:
+                    result.sort(cmp=sort)
+                self.posts_cache.set_posts(subreddit_name, result)
             return result
         except Exception as e:
             log.exception(e)

@@ -150,8 +150,6 @@ class CommentSearcher(RedditHandler):
 
         self.start_supply_comments()
 
-        self._exclude_words = self.comment_storage.get_words_exclude()
-
         log.info("comment searcher inited!")
 
     def _start(self, aspect):
@@ -246,13 +244,13 @@ class CommentSearcher(RedditHandler):
                 return post
 
     def find_comment(self, sub, add_authors=False):
+        self.exclude_words = self.comment_storage.get_words_exclude()
         posts = self._get_posts(sub)
         self.state_persist.set_state_data(cs_aspect(sub), {"state": S_WORK, "retrieved": len(posts)})
         self.state_storage.set_started(sub)
         log.info("Start finding comments to sub %s" % sub)
         for post in posts:
             self.state_storage.set_current(sub, post_to_dict(post))
-
             try:
                 copies = self._get_post_copies(post)
                 if len(copies) >= min_copy_count:
@@ -308,7 +306,7 @@ class CommentSearcher(RedditHandler):
         if is_good_text(text):
             c_tokens = set(normalize(text, lambda x: x))
             for token in c_tokens:
-                if hash(token) in self._exclude_words:
+                if hash(token) in self.exclude_words:
                     return False
 
             for p_comment in self.get_all_comments(post):
