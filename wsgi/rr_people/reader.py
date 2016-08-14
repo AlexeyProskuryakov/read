@@ -120,16 +120,17 @@ re_url = re.compile("((https?|ftp)://|www\.)[^\s/$.?#].[^\s]*")
 re_crying_chars = re.compile("[A-Z]{2,}")
 re_answer = re.compile("\> .*\n?")
 re_slash = re.compile("/?r/\S+")
+re_not_latin = re.compile("[^a-zA-Z0-9\,\.\?\!\:\;\(\)\$\%\#\@\-\+\=\_\/\\\\\"\'\[\]\{\}\>\<]\*\&\^\±\§\~\`")
 
 
 def is_good_text(text):
     return len(text) >= 15 and \
            len(text) <= 140 and \
+           len(re_not_latin.findall(text)) == 0 and \
            len(re_url.findall(text)) == 0 and \
            len(re_crying_chars.findall(text)) == 0 and \
            len(re_answer.findall(text)) == 0 and \
-           len(re_slash.findall(text)) == 0 and \
-           "Edit" not in text
+           len(re_slash.findall(text)) == 0
 
 
 class CommentSearcher(RedditHandler):

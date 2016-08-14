@@ -224,12 +224,12 @@ def comment_search_info(sub):
 splitter = re.compile("[^\w\d]+")
 
 
-@app.route("/exclude")
+@app.route("/exclude", methods=["GET", "POST"])
 @login_required
 def exclude():
     if request.method == "POST":
         words = request.form.get("words")
-        words = splitter.split(words)
+        words = filter(lambda x: x.strip(), splitter.split(words))
         comment_storage.set_words_exclude(words)
 
     words = comment_storage.get_words_exclude()

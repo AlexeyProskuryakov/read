@@ -30,12 +30,16 @@ class CommentsStorage(DBHandler):
     def set_words_exclude(self, new_words):
         new_words_hashes = dict(map(lambda x: (hash_word(x), x), new_words))
         for old_word in self.words_exclude.find({}, projection={"hash": 1}):
-            if old_word['hash'] in new_words_hashes:
+            if old_word['hash'] not in new_words_hashes:
+                self.words_exclude.delete_one({"hash": old_word["hash"]})
+            else:
                 del new_words_hashes[old_word['hash']]
 
-        to_insert = map(lambda x: {"hash": x[0], "raw": x[1]},
-                        [(hash, raw) for hash, raw in new_words_hashes.iteritems()])
-        self.words_exclude.insert_many(to_insert, ordered=False)
+        if new_words_hashes:
+            to_insert = map(lambda x: {"hash": x[0], "raw": x[1]},
+                            [(hash, raw) for hash, raw in new_words_hashes.iteritems()])
+
+            self.words_exclude.insert_many(to_insert, ordered=False)
 
     def get_words_exclude(self):
         return dict(map(lambda x: (x['hash'], x['raw']), self.words_exclude.find()))
