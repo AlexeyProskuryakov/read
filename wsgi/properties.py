@@ -58,6 +58,7 @@ cfs_redis_port = 17140
 cfs_redis_password = "sederfes100500"
 
 states_address = "https://read-shlak0bl0k.rhcloud.com/rockmongo/x"
+
 states_user = "admin"
 states_pwd = "YsrSQnuBJGhH"
 
