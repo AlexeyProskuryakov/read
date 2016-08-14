@@ -62,6 +62,16 @@ log = logging.getLogger("man")
 
 POSTS_TTL = 60 * 10
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+
 class _RedditPostsCache():
     __metaclass__ = Singleton
 
@@ -102,7 +112,6 @@ class RedditHandler(object):
 
     def get_hot_and_new(self, subreddit_name, sort=None, limit=properties.DEFAULT_LIMIT):
         try:
-
             result = self.posts_cache.get_posts(subreddit_name)
             if not result:
                 subreddit = self.get_subreddit(subreddit_name)
@@ -117,6 +126,7 @@ class RedditHandler(object):
                 if sort:
                     result.sort(cmp=sort)
                 self.posts_cache.set_posts(subreddit_name, result)
+
             return result
         except Exception as e:
             log.exception(e)
@@ -159,16 +169,6 @@ class RedditHandler(object):
     def search(self, query):
         copies = list(self.reddit.search(query))
         return list(copies)
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
 
 token_reg = re.compile("[\\W\\d]+")
 
