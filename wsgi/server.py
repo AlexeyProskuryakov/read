@@ -232,11 +232,7 @@ def exclude():
         words = filter(lambda x: x.strip(), splitter.split(words))
         comment_storage.set_words_exclude(words)
 
-        words = comment_storage.get_words_exclude()
-        comment_searcher._exclude_words = words
-    else:
-        words = comment_storage.get_words_exclude()
-
+    words = comment_storage.get_words_exclude()
     return render_template("exclude.html", **{"words": words.values()})
 
 
