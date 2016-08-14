@@ -1,7 +1,7 @@
 import logging
 import random
 import re
-from threading import Thread
+
 
 import praw
 from praw.objects import MoreComments
