@@ -14,6 +14,7 @@ class CommentsStorage(DBHandler):
         collections_names = self.db.collection_names(include_system_collections=False)
         if _comments not in collections_names:
             self.comments = self.db.create_collection(_comments)
+            self.comments.create_index([("text_hash", 1)], unique=True)
             self.comments.create_index([("fullname", 1)])
             self.comments.create_index([("state", 1)], sparse=True)
             self.comments.create_index([("sub", 1)], sparse=True)
@@ -44,13 +45,19 @@ class CommentsStorage(DBHandler):
     def get_words_exclude(self):
         return dict(map(lambda x: (x['hash'], x['raw']), self.words_exclude.find()))
 
-    def set_comment_info_ready(self, post_fullname, sub, comment_text, permalink):
+    def set_comment_info_ready(self, post_fullname, text_hash, sub, comment_text, permalink):
+        found = self.comments.find_one({"fullname": post_fullname, "text_hash": text_hash})
+        if found:
+            return None
         return self.comments.insert_one(
-            {"fullname": post_fullname,
-             "state": CS_READY_FOR_COMMENT,
-             "sub": sub,
-             "text": comment_text,
-             "post_url": permalink}
+            {
+                "fullname": post_fullname,
+                "text_hash": text_hash,
+                "state": CS_READY_FOR_COMMENT,
+                "sub": sub,
+                "text": comment_text,
+                "post_url": permalink
+            }
         )
 
     def get_posts_ready_for_comment(self, sub=None):

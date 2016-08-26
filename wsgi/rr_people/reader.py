@@ -255,17 +255,23 @@ class CommentSearcher(RedditHandler):
                 copies = self._get_post_copies(post)
                 if len(copies) >= min_copy_count:
                     post = self._get_acceptor(copies)
-                    comment = None
+                    comment, c_hash = None, None
                     for copy in copies:
                         if post and copy.subreddit != post.subreddit and copy.fullname != post.fullname:
-                            comment = self._retrieve_interested_comment(copy, post)
+                            comment, c_hash = self._retrieve_interested_comment(copy, post)
                             if comment:
                                 log.info("Find comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
                                     comment.body, post, post.fullname, sub))
                                 break
 
                     if comment:
-                        self.comment_storage.set_comment_info_ready(post.fullname, sub, comment.body, post.permalink)
+                        insert_result = self.comment_storage.set_comment_info_ready(post.fullname, c_hash, sub,
+                                                                                    comment.body, post.permalink)
+                        if not insert_result:
+                            log.warning("Found stored comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
+                                comment.body, post, post.fullname, sub))
+                            continue
+
                         self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                         yield post.fullname
 
@@ -289,11 +295,11 @@ class CommentSearcher(RedditHandler):
         for i, comment in enumerate(self.comments_sequence(copy.comments)):
             if i < after:
                 continue
-            if comment.ups >= min_donor_comment_ups and \
-                            comment.ups <= max_donor_comment_ups and \
-                            post.author != comment.author and \
-                    self._check_comment_text(comment.body, post):
-                return comment
+            if comment.ups >= min_donor_comment_ups and comment.ups <= max_donor_comment_ups and post.author != comment.author:
+                check, tokens = self._check_comment_text(comment.body, post)
+                if check:
+                    return comment, hash(tuple(tokens))
+        return None, None
 
     def _check_comment_text(self, text, post):
         """
@@ -304,17 +310,17 @@ class CommentSearcher(RedditHandler):
         :return:
         """
         if is_good_text(text):
-            c_tokens = set(normalize(text, lambda x: x))
+            c_tokens = set(normalize(text))
             for token in c_tokens:
                 if hash(token) in self.exclude_words:
-                    return False
+                    return False, None
 
             for p_comment in self.get_all_comments(post):
                 p_text = p_comment.body
                 if is_good_text(p_text):
-                    p_tokens = set(normalize(p_text, lambda x: x))
+                    p_tokens = set(normalize(p_text))
                     if len(c_tokens) == len(p_tokens) and len(p_tokens.intersection(c_tokens)) == len(p_tokens):
                         log.info("found similar text [%s] in post %s" % (c_tokens, post.fullname))
-                        return False
+                        return False, None
             self.clear_cache(post)
-            return True
+            return True, c_tokens

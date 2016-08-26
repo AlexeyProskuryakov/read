@@ -173,7 +173,7 @@ class RedditHandler(object):
 token_reg = re.compile("[\\W\\d]+")
 
 
-def normalize(comment_body, serialise=lambda x: " ".join(x)):
+def normalize(comment_body, serialise=lambda x: x):
     res = []
     if isinstance(comment_body, (str, unicode)):
         tokens = token_reg.split(comment_body.lower().strip())
