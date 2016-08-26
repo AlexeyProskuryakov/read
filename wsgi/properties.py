@@ -122,3 +122,18 @@ WORKED_PIDS_QUERY = os.environ.get("WORKED_PIDS_QUERY", "python")
 
 # logger.info(
 #     "Reddit People MANAGEMENT SYSTEM STARTED... \nEnv:%s" % "\n".join(["%s:\t%s" % (k, v) for k, v in os.environ.iteritems()]))
+
+if test_mode:
+    mongo_uri = "mongodb://localhost:27017/reddit_people"
+    db_name = "reddit_people"
+
+    ae_mongo_uri = "mongodb://localhost:27017/ae"
+    ae_db_name = "ae"
+
+    comments_mongo_uri = "mongodb://localhost:27017/humans_comments"
+    comments_db_name = "humans_comments"
+    TIME_TO_COMMENT_SPOILED = 3600 * 24 * 30 * 6
+
+    comment_redis_address = states_redis_address = posts_redis_address = process_director_redis_address = queue_redis_address = "localhost"
+    comment_redis_port = states_redis_port = posts_redis_port = process_director_redis_port = queue_redis_port = 6379
+    comment_redis_password = states_redis_password = posts_redis_password = process_director_redis_password = queue_redis_password = "sederfes100500"

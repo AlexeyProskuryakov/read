@@ -174,8 +174,8 @@ class CommentSearcher(RedditHandler):
 
         log.info("Will start find comments for [%s]" % (sub))
         try:
-            for pfn in self.find_comment(sub):
-                self.comment_queue.put_comment(sub, pfn)
+            for comment_id in self.find_comment(sub):
+                self.comment_queue.put_comment(sub, comment_id)
         except Exception as e:
             log.exception(e)
 
@@ -271,9 +271,9 @@ class CommentSearcher(RedditHandler):
                             log.warning("Found stored comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
                                 comment.body, post, post.fullname, sub))
                             continue
-
-                        self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
-                        yield post.fullname
+                        else:
+                            self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
+                            yield str(insert_result.inserted_id)
 
             except Exception as e:
                 log.exception(e)

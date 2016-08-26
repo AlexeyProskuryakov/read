@@ -45,7 +45,7 @@ class CommentsStorage(DBHandler):
     def get_words_exclude(self):
         return dict(map(lambda x: (x['hash'], x['raw']), self.words_exclude.find()))
 
-    def set_comment_info_ready(self, post_fullname, text_hash, sub, comment_text, permalink):
+    def set_comment_info_ready(self, post_fullname, text_hash, sub, comment_text, post_url):
         found = self.comments.find_one({"fullname": post_fullname, "text_hash": text_hash})
         if found:
             return None
@@ -56,7 +56,7 @@ class CommentsStorage(DBHandler):
                 "state": CS_READY_FOR_COMMENT,
                 "sub": sub,
                 "text": comment_text,
-                "post_url": permalink
+                "post_url": post_url
             }
         )
 
