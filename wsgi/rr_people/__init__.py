@@ -209,6 +209,13 @@ def post_to_dict(post):
         "num_comments": post.num_comments,
     }
 
+def check_on_exclude(text, exclude_dict):
+    c_tokens = set(normalize(text))
+    for token in c_tokens:
+        if hash(token) in exclude_dict:
+            return False, None
+    return True, c_tokens
+
 
 if __name__ == '__main__':
 

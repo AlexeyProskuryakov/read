@@ -12,7 +12,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user
 from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
-from wsgi.rr_people import S_WORK
+from wsgi.rr_people import S_WORK, check_on_exclude
 from wsgi.rr_people.reader import CommentSearcher, cs_aspect
 from wsgi.rr_people.states import get_worked_pids
 from wsgi.user_management import UsersHandler, User
@@ -44,7 +44,8 @@ def to_dt(value):
 
 
 def array_to_string(array):
-    return " ".join([str(el) for el in array])
+    array.sort()
+    return "\n".join([str(el) for el in array])
 
 
 app.jinja_env.filters['tst_to_dt'] = tst_to_dt
@@ -193,21 +194,21 @@ def comments():
 def sub_comments(sub):
     post_ids = comment_queue.get_all_comments_post_ids(sub)
     posts = map(lambda x: {"url": x.get("post_url"), "fullname": x.get("fullname"), "text": x.get("text")},
-                comment_storage.get_posts(post_ids))
+                comment_storage.get_comments(post_ids))
     return jsonify(**{"posts": posts})
 
 
 @app.route("/comment_search/info/<sub>")
 @login_required
 def comment_search_info(sub):
-    posts = comment_storage.get_posts_ready_for_comment(sub)
+    posts = comment_storage.get_ready(sub)
     comments_posts_ids = comment_queue.get_all_comments_post_ids(sub)
     if comments_posts_ids:
         for i, post in enumerate(posts):
-            post['is_in_queue'] = post.get("fullname") in comments_posts_ids
+            post['is_in_queue'] = post.get("_id") in comments_posts_ids
             posts[i] = post
 
-    posts_commented = comment_storage.get_posts_commented(sub)
+    posts_commented = comment_storage.get_commented(sub)
     process_state = state_persist.get_process_state(cs_aspect(sub), history=True)
     cs_state = comment_searcher.state_storage.get_state(sub)
 
@@ -231,15 +232,16 @@ def exclude():
         words = request.form.get("words")
         words = filter(lambda x: x.strip(), splitter.split(words))
         comment_storage.set_words_exclude(words)
+        exclude_dict = comment_storage.get_words_exclude()
+        for post in comment_storage.get_ready():
+            ok, _ = check_on_exclude(post.get("text"), exclude_dict)
+            if not ok:
+                log.info("comment: %s \n not checked by new exclude words"%post)
+                comment_storage.comments.delete_one({"_id":post.get("_id")})
 
     words = comment_storage.get_words_exclude()
     return render_template("exclude.html", **{"words": words.values()})
 
 
 if __name__ == '__main__':
-    print os.path.dirname(__file__)
-    import random
-
-    port = random.randint(65000, 65100)
-    print "PORT: ", port
-    app.run(port=port)
+    app.run(port=65010)

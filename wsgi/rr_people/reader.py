@@ -13,7 +13,7 @@ from wsgi.db import DBHandler
 from wsgi.properties import min_copy_count, \
     shift_copy_comments_part, min_donor_comment_ups, max_donor_comment_ups, \
     comments_mongo_uri, comments_db_name, DEFAULT_LIMIT, cfs_redis_address, cfs_redis_port, cfs_redis_password
-from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, S_END
+from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, S_END, check_on_exclude
 from wsgi.rr_people import normalize
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.states.persist import ProcessStatesPersist
@@ -265,8 +265,8 @@ class CommentSearcher(RedditHandler):
                                 break
 
                     if comment:
-                        insert_result = self.comment_storage.set_comment_info_ready(post.fullname, c_hash, sub,
-                                                                                    comment.body, post.permalink)
+                        insert_result = self.comment_storage.add_ready_comment(post.fullname, c_hash, sub,
+                                                                               comment.body, post.permalink)
                         if not insert_result:
                             log.warning("Found stored comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
                                 comment.body, post, post.fullname, sub))
@@ -310,11 +310,9 @@ class CommentSearcher(RedditHandler):
         :return:
         """
         if is_good_text(text):
-            c_tokens = set(normalize(text))
-            for token in c_tokens:
-                if hash(token) in self.exclude_words:
-                    return False, None
-
+            ok, c_tokens = check_on_exclude(text, self.exclude_words)
+            if not ok:
+                return False, None
             for p_comment in self.get_all_comments(post):
                 p_text = p_comment.body
                 if is_good_text(p_text):

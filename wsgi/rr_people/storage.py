@@ -45,7 +45,7 @@ class CommentsStorage(DBHandler):
     def get_words_exclude(self):
         return dict(map(lambda x: (x['hash'], x['raw']), self.words_exclude.find()))
 
-    def set_comment_info_ready(self, post_fullname, text_hash, sub, comment_text, post_url):
+    def add_ready_comment(self, post_fullname, text_hash, sub, comment_text, post_url):
         found = self.comments.find_one({"fullname": post_fullname, "text_hash": text_hash})
         if found:
             return None
@@ -60,15 +60,18 @@ class CommentsStorage(DBHandler):
             }
         )
 
-    def get_posts_ready_for_comment(self, sub=None):
-        q = {"state": CS_READY_FOR_COMMENT, "sub": sub}
+    def get_ready(self, sub=None):
+        q = {"state": CS_READY_FOR_COMMENT}
+        if sub:
+            q['sub'] = sub
+
         return list(self.comments.find(q))
 
-    def get_posts_commented(self, sub):
+    def get_commented(self, sub):
         q = {"state": CS_COMMENTED, "sub": sub}
         return list(self.comments.find(q).sort([("time", -1)]))
 
-    def get_posts(self, posts_fullnames):
+    def get_comments(self, posts_fullnames):
         for el in self.comments.find({"fullname": {"$in": posts_fullnames}},
                                      projection={"text": True, "fullname": True, "post_url": True}):
             yield el
