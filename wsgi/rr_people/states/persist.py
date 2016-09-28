@@ -41,7 +41,7 @@ class ProcessStatesPersist(ProcessDirector, DBHandler):
 
     def set_state_data(self, aspect, data):
         self.state_data.insert_one(
-            dict({"aspect": aspect, "time": datetime.datetime.utcnow(), "by": current_process().pid}, **data))
+            dict({"aspect": aspect, "time": datetime.datetime.now(), "by": current_process().pid}, **data))
 
     def clear(self, aspect):
         self.state_data.delete_many({"aspect": aspect})

@@ -23,7 +23,7 @@ log = logging.getLogger("reader")
 
 
 def _so_long(created, min_time):
-    return (datetime.utcnow() - datetime.fromtimestamp(created)).total_seconds() > min_time
+    return (datetime.now() - datetime.fromtimestamp(created)).total_seconds() > min_time
 
 
 PERSIST_STATE = lambda x: "load_state_%s" % x
