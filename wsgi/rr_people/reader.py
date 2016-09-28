@@ -126,6 +126,7 @@ class CommentSearcherWorker(Process, RedditHandler):
                         return False, None
             self.clear_cache(post)
             return True, c_tokens
+        return False, None
 
     def _get_posts(self, sub):
         state = self.state_storage.get_state(sub)
