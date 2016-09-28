@@ -2,6 +2,7 @@ import json
 import logging
 
 import redis
+import time
 
 from wsgi.db import DBHandler
 from wsgi.properties import comments_mongo_uri, comments_db_name, cfs_redis_address, cfs_redis_port, cfs_redis_password
@@ -19,6 +20,7 @@ class CommentsStorage(DBHandler):
         collections_names = self.db.collection_names(include_system_collections=False)
         if _comments not in collections_names:
             self.comments = self.db.create_collection(_comments)
+            self.comments.create_index([("time", 1)])
             self.comments.create_index([("text_hash", 1)], unique=True)
             self.comments.create_index([("fullname", 1)])
             self.comments.create_index([("state", 1)], sparse=True)
@@ -56,6 +58,7 @@ class CommentsStorage(DBHandler):
             return None
         return self.comments.insert_one(
             {
+                "time": time.time(),
                 "fullname": post_fullname,
                 "text_hash": text_hash,
                 "state": CS_READY_FOR_COMMENT,
@@ -80,6 +83,7 @@ class CommentsStorage(DBHandler):
         for el in self.comments.find({"fullname": {"$in": posts_fullnames}},
                                      projection={"text": True, "fullname": True, "post_url": True}):
             yield el
+
 
 log = logging.getLogger("storage")
 

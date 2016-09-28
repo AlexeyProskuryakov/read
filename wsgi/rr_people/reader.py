@@ -179,12 +179,11 @@ class CommentSearcherWorker(Process, RedditHandler):
                         insert_result = self.comment_storage.add_ready_comment(post.fullname, c_hash, sub,
                                                                                comment.body, post.permalink)
                         if not insert_result:
-                            log.warning("Found stored comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
-                                comment.body, post, post.fullname, sub))
+                            log.warning("Found already stored comment in post: [%s] at subreddit: [%s] :(" % (
+                                post.fullname, sub))
                             continue
                         else:
-                            log.info("Will store comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
-                                comment.body, post, post.fullname, sub))
+                            log.info("Will store comment in post: [%s] at subreddit: [%s] :)" % (post.fullname, sub))
                             self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                             yield str(insert_result.inserted_id)
 

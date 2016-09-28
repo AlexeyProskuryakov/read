@@ -110,8 +110,10 @@
                 <tr>
                     <td>post id</td>
                     <td>text</td>
-                    <td>hash</td>
+                    <td>is in queue?</td>
+                    <td>when found</td>
 
+                <td>is in queue?</td>
                 </tr>
                 </thead>
                 <tbody>
@@ -125,10 +127,10 @@
                         {{post.get('text')}}
                     </td>
                     <td>
-                        {{post['words_hash']}}
-                    </td>
-                    <td>
                         {{post['is_in_queue']}}
+                    </td>
+                     <td>
+                        {{post['time'] | tst_to_dt}}
                     </td>
                 </tr>
 
