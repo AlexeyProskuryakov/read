@@ -203,9 +203,12 @@ class CommentSearcher(RedditHandler):
         def f():
             log.info("Start supplying comments")
             for message in self.comment_queue.get_who_needs_comments():
-                nc_sub = message.get("data")
-                log.info("Receive need comments for sub [%s]" % nc_sub)
-                self.start_comment_retrieve_iteration(nc_sub)
+                try:
+                    nc_sub = message.get("data")
+                    log.info("Receive need comments for sub [%s]" % nc_sub)
+                    self.start_comment_retrieve_iteration(nc_sub)
+                except Exception as e:
+                    log.error("exception at process need comment request %s" % e)
 
         process = Process(name="comment supplier", target=f)
         process.start()
@@ -289,7 +292,7 @@ class CommentSearcher(RedditHandler):
         # prepare comments from donor to selection
         after = copy.num_comments / shift_copy_comments_part
         if not after:
-            return
+            return None, None
         if after > 34:
             after = 34
         for i, comment in enumerate(self.comments_sequence(copy.comments)):
