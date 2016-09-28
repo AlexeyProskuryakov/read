@@ -68,16 +68,10 @@ if os.environ.get("test", False):
     toolbar = DebugToolbarExtension(app)
 
 wu = WakeUp()
-pd = ProcessDirector("server")
+wu.daemon = True
+wu.start()
 
-if not pd.is_aspect_worked("server"):
-    comment_searcher = CommentSearcher()
-    comment_searcher.start()
-
-    wu.daemon = True
-    wu.start()
-
-    pd.start_aspect("server", os.getpid())
+comment_searcher = CommentSearcher()
 
 @app.route("/wake_up/<salt>", methods=["POST"])
 def wake_up(salt):
@@ -220,7 +214,7 @@ def comment_search_info(sub):
     comments_posts_ids = comment_queue.get_all_comments_post_ids(sub)
     if comments_posts_ids:
         for i, post in enumerate(posts):
-            post['is_in_queue'] = post.get("_id") in comments_posts_ids
+            post['is_in_queue'] = str(post.get("_id")) in comments_posts_ids
             posts[i] = post
 
     posts_commented = comment_storage.get_commented(sub)

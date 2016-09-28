@@ -1,14 +1,16 @@
 import logging
+import os
 from multiprocessing import Process, Queue
 from threading import Thread, RLock
 
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.reader import CommentSearcherWorker
+from wsgi.rr_people.states.processes import ProcessDirector
 
 log = logging.getLogger("manage")
 
 
-class CommentSearcher(Process):
+class CommentSearcher():
     def __init__(self, user_agent=None):
         """
         :param user_agent: for reddit non auth and non oauth client
@@ -16,9 +18,6 @@ class CommentSearcher(Process):
         :param cp:  commented posts if persisted
         :return:
         """
-
-        super(CommentSearcher, self).__init__()
-
         self.end_queue = Queue()
         self.mu = RLock()
         self._processes = {}
@@ -36,17 +35,19 @@ class CommentSearcher(Process):
                 except Exception as e:
                     log.error("error at start comment search worker %s"%e)
 
-        Thread(target=start).start()
-
-
         def end():
             while 1:
                 pid = self.end_queue.get()
                 log.info("will stopping %s" % pid)
                 self.join_pid(pid)
 
-        Thread(target=end).start()
-
+        pd = ProcessDirector("comment searcher")
+        if not pd.is_aspect_worked("comment_searcher"):
+            Thread(target=start).start()
+            Thread(target=end).start()
+            pd.start_aspect("comment_searcher", os.getpid())
+        else:
+            log.info("Threads not start because another instance work")
 
         log.info("comment searcher inited!")
 
