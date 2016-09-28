@@ -182,6 +182,8 @@ class CommentSearcherWorker(Process, RedditHandler):
                                 comment.body, post, post.fullname, sub))
                             continue
                         else:
+                            log.info("Will store comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
+                                comment.body, post, post.fullname, sub))
                             self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
                             yield str(insert_result.inserted_id)
 

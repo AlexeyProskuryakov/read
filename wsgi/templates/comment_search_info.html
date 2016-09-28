@@ -116,7 +116,7 @@
                 </thead>
                 <tbody>
                 {% for post in posts_found_comment_text %}
-                {%if post['is_in_queue'] %}
+
                 <tr>
                     <td>
                         {{post['fullname']}}
@@ -127,8 +127,11 @@
                     <td>
                         {{post['words_hash']}}
                     </td>
+                    <td>
+                        {{post['is_in_queue']}}
+                    </td>
                 </tr>
-                {% endif %}
+
                 {% endfor %}
                 </tbody>
             </table>

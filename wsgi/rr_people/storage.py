@@ -66,7 +66,7 @@ class CommentsStorage(DBHandler):
         )
 
     def get_ready(self, sub=None):
-        q = {"state": CS_READY_FOR_COMMENT}
+        q = {'state': CS_READY_FOR_COMMENT}
         if sub:
             q['sub'] = sub
 
