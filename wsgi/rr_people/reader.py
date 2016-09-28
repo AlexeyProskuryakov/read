@@ -47,7 +47,7 @@ def is_good_text(text):
 def start(state_persist, aspect):
     _aspect = cs_aspect(aspect)
     _pid = current_process().pid
-    started = state_persist.start_aspect(_aspect, _pid)
+    started = state_persist.can_start_aspect(_aspect, _pid)
     if started.get("started", False):
         state_persist.set_state_data(_aspect, {"state": "started", "by": _pid})
         return True

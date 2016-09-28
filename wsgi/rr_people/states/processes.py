@@ -1,5 +1,6 @@
 # coding:utf-8
 import logging
+import os
 from multiprocessing.synchronize import RLock
 
 import redis
@@ -28,7 +29,7 @@ class ProcessDirector(object):
         self.mutex = RLock()
         log.info("Process director inited for %s" % name)
 
-    def start_aspect(self, aspect, pid):
+    def can_start_aspect(self, aspect, pid):
         """
         signaling that some process with :aspect and :pid was started.
         :param aspect: name of process aspect
@@ -59,6 +60,17 @@ class ProcessDirector(object):
     def stop_aspect(self, aspect):
         self.redis.delete(PREFIX(aspect))
 
+    def _store_aspect_pid(self, aspect, pid):
+        p = self.redis.pipeline()
+        p.delete(PREFIX(aspect))
+        p.set(PREFIX(aspect), pid)
+        p.execute()
+
+    def start_aspect(self, aspect, pid):
+        with self.mutex:
+            log.info("will store new pid %s [%s]" % (aspect, pid))
+            self._store_aspect_pid(aspect, pid)
+
     def get_states(self):
         keys = self.redis.keys(PREFIX_QUERY)
         result = []
@@ -76,3 +88,10 @@ class ProcessDirector(object):
             pid = int(pid_raw)
             result = dict(result, **{"pid": pid, "work": pid in wp})
         return result
+
+    def is_aspect_worked(self, aspect):
+        aspect_pid = self.redis.get(PREFIX(aspect))
+        if aspect_pid is not None:
+            return int(aspect_pid) in get_worked_pids()
+        else:
+            return False

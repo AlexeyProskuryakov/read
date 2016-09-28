@@ -18,6 +18,7 @@ from wsgi.rr_people.reader import cs_aspect, CommentFounderStateStorage
 from wsgi.rr_people.reader_manage import CommentSearcher
 from wsgi.rr_people.states import get_worked_pids
 from wsgi.rr_people.states.persist import ProcessStatesPersist
+from wsgi.rr_people.states.processes import ProcessDirector
 from wsgi.rr_people.storage import CommentsStorage
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
@@ -67,9 +68,16 @@ if os.environ.get("test", False):
     toolbar = DebugToolbarExtension(app)
 
 wu = WakeUp()
-wu.daemon = True
-wu.start()
+pd = ProcessDirector("server")
 
+if not pd.is_aspect_worked("server"):
+    comment_searcher = CommentSearcher()
+    comment_searcher.start()
+
+    wu.daemon = True
+    wu.start()
+
+    pd.start_aspect("server", os.getpid())
 
 @app.route("/wake_up/<salt>", methods=["POST"])
 def wake_up(salt):
@@ -95,8 +103,6 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 db = HumanStorage(name="hs server")
-comment_searcher = CommentSearcher()
-comment_searcher.start()
 
 comment_storage = CommentsStorage("server")
 comment_queue = CommentQueue("server")

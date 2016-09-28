@@ -38,7 +38,7 @@ class WakeUp(Process):
         self.pd = ProcessDirector("wake up")
 
     def run(self):
-        if not self.pd.start_aspect("reader_wake_up", self.pid):
+        if not self.pd.can_start_aspect("reader_wake_up", self.pid):
             return
 
         while 1:
