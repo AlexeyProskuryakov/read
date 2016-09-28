@@ -58,6 +58,15 @@ S_SUSPEND = "suspend"
 S_TERMINATED = "terminated"
 S_END = "end"
 
+START_TIME = "t_start"
+END_TIME = "t_end"
+LOADED_COUNT = "loaded_count"
+
+IS_ENDED = "ended"
+IS_STARTED = "started"
+PROCESSED_COUNT = "processed_count"
+CURRENT = "current"
+
 log = logging.getLogger("man")
 
 POSTS_TTL = 60 * 10
@@ -215,6 +224,7 @@ def check_on_exclude(text, exclude_dict):
         if hash(token) in exclude_dict:
             return False, None
     return True, c_tokens
+
 
 
 if __name__ == '__main__':

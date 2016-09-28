@@ -13,8 +13,12 @@ from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK, check_on_exclude
-from wsgi.rr_people.reader import CommentSearcher, cs_aspect
+from wsgi.rr_people.queue import CommentQueue
+from wsgi.rr_people.reader import cs_aspect, CommentFounderStateStorage
+from wsgi.rr_people.reader_manage import CommentSearcher
 from wsgi.rr_people.states import get_worked_pids
+from wsgi.rr_people.states.persist import ProcessStatesPersist
+from wsgi.rr_people.storage import CommentsStorage
 from wsgi.user_management import UsersHandler, User
 from wsgi.wake_up import WakeUp
 
@@ -25,6 +29,8 @@ signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 import sys
 
 reload(sys)
+
+splitter = re.compile("[^\w\d]+")
 sys.setdefaultencoding('utf-8')
 
 log = logging.getLogger("web")
@@ -90,9 +96,12 @@ login_manager.login_view = 'login'
 
 db = HumanStorage(name="hs server")
 comment_searcher = CommentSearcher()
-comment_storage = comment_searcher.comment_storage
-comment_queue = comment_searcher.comment_queue
-state_persist = comment_searcher.state_persist
+comment_searcher.start()
+
+comment_storage = CommentsStorage("server")
+comment_queue = CommentQueue("server")
+state_persist = ProcessStatesPersist("server")
+state_storage = CommentFounderStateStorage("server")
 
 usersHandler = UsersHandler(db)
 log.info("users handler was initted")
@@ -167,14 +176,14 @@ def start_comment_search(sub):
 @app.route("/comment_search/reset_state/<sub>", methods=["POST"])
 @login_required
 def reset_comment_searcher_state(sub):
-    comment_searcher.state_storage.reset_state(sub)
+    state_storage.reset_state(sub)
     return jsonify({"ok": True})
 
 
 @app.route("/comment_search/clear_process_log/<sub>", methods=["POST"])
 @login_required
 def cleat_process_log(sub):
-    comment_searcher.state_persist.clear(cs_aspect(sub))
+    state_persist.clear(cs_aspect(sub))
     return jsonify({"ok": True})
 
 
@@ -210,7 +219,7 @@ def comment_search_info(sub):
 
     posts_commented = comment_storage.get_commented(sub)
     process_state = state_persist.get_process_state(cs_aspect(sub), history=True)
-    cs_state = comment_searcher.state_storage.get_state(sub)
+    cs_state = state_storage.get_state(sub)
 
     result = {"posts_found_comment_text": posts,
               "posts_commented": posts_commented,
@@ -220,9 +229,6 @@ def comment_search_info(sub):
               "state": cs_state
               }
     return render_template("comment_search_info.html", **result)
-
-
-splitter = re.compile("[^\w\d]+")
 
 
 @app.route("/exclude", methods=["GET", "POST"])
@@ -236,12 +242,13 @@ def exclude():
         for post in comment_storage.get_ready():
             ok, _ = check_on_exclude(post.get("text"), exclude_dict)
             if not ok:
-                log.info("comment: %s \n not checked by new exclude words"%post)
-                comment_storage.comments.delete_one({"_id":post.get("_id")})
+                log.info("comment: %s \n not checked by new exclude words" % post)
+                comment_storage.comments.delete_one({"_id": post.get("_id")})
 
     words = comment_storage.get_words_exclude()
     return render_template("exclude.html", **{"words": words.values()})
 
 
 if __name__ == '__main__':
+    print "listen"
     app.run(port=65010)

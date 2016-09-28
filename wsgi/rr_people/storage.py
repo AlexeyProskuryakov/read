@@ -1,6 +1,11 @@
+import json
+import logging
+
+import redis
+
 from wsgi.db import DBHandler
-from wsgi.properties import comments_mongo_uri, comments_db_name
-from wsgi.rr_people import hash_word
+from wsgi.properties import comments_mongo_uri, comments_db_name, cfs_redis_address, cfs_redis_port, cfs_redis_password
+from wsgi.rr_people import hash_word, START_TIME, END_TIME, LOADED_COUNT, CURRENT, PROCESSED_COUNT, IS_ENDED, IS_STARTED
 
 CS_COMMENTED = "commented"
 CS_READY_FOR_COMMENT = "ready_for_comment"
@@ -75,3 +80,80 @@ class CommentsStorage(DBHandler):
         for el in self.comments.find({"fullname": {"$in": posts_fullnames}},
                                      projection={"text": True, "fullname": True, "post_url": True}):
             yield el
+
+log = logging.getLogger("storage")
+
+PERSIST_STATE = lambda x: "load_state_%s" % x
+PREV_START_TIME = "p_t_start"
+PREV_END_TIME = "p_t_end"
+PREV_LOADED_COUNT = "p_loaded_count"
+
+
+class CommentFounderStateStorage(object):
+    def __init__(self, name="?", clear=False, max_connections=2):
+        self.redis = redis.StrictRedis(host=cfs_redis_address,
+                                       port=cfs_redis_port,
+                                       password=cfs_redis_password,
+                                       db=0,
+                                       max_connections=max_connections
+                                       )
+        if clear:
+            self.redis.flushdb()
+
+        log.info("Comment founder state storage for %s inited!" % name)
+
+    def persist_load_state(self, sub, start, stop, count):
+        p = self.redis.pipeline()
+
+        key = PERSIST_STATE(sub)
+        persisted_state = self.redis.hgetall(key)
+        if persisted_state:
+            p.hset(key, PREV_START_TIME, persisted_state.get(START_TIME))
+            p.hset(key, PREV_END_TIME, persisted_state.get(END_TIME))
+            p.hset(key, PREV_LOADED_COUNT, persisted_state.get(LOADED_COUNT))
+            p.hset(key, PROCESSED_COUNT, 0)
+            p.hset(key, CURRENT, json.dumps({}))
+
+        p.hset(key, START_TIME, start)
+        p.hset(key, END_TIME, stop)
+        p.hset(key, LOADED_COUNT, count)
+        p.execute()
+
+    def set_ended(self, sub):
+        p = self.redis.pipeline()
+        p.hset(PERSIST_STATE(sub), IS_ENDED, True)
+        p.hset(PERSIST_STATE(sub), IS_STARTED, False)
+        p.execute()
+
+    def set_started(self, sub):
+        p = self.redis.pipeline()
+        p.hset(PERSIST_STATE(sub), IS_ENDED, False)
+        p.hset(PERSIST_STATE(sub), IS_STARTED, True)
+        p.execute()
+
+    def is_ended(self, sub):
+        return self.redis.hget(PERSIST_STATE(sub), IS_ENDED)
+
+    def is_started(self, sub):
+        return self.redis.hget(PERSIST_STATE(sub), IS_STARTED)
+
+    def set_current(self, sub, current):
+        p = self.redis.pipeline()
+        p.hset(PERSIST_STATE(sub), CURRENT, json.dumps(current))
+        p.hincrby(PERSIST_STATE(sub), PROCESSED_COUNT, 1)
+        p.execute()
+
+    def get_current(self, sub):
+        data = self.redis.hget(PERSIST_STATE(sub), CURRENT)
+        if data:
+            return json.loads(data)
+
+    def get_proc_count(self, sub):
+        return self.redis.hget(PERSIST_STATE(sub), PROCESSED_COUNT)
+
+    def get_state(self, sub):
+        return self.redis.hgetall(PERSIST_STATE(sub))
+
+    def reset_state(self, sub):
+        self.redis.hdel(PERSIST_STATE(sub), *self.redis.hkeys(PERSIST_STATE(sub)))
+        return
