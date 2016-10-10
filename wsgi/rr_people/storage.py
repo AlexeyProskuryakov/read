@@ -52,20 +52,24 @@ class CommentsStorage(DBHandler):
     def get_words_exclude(self):
         return dict(map(lambda x: (x['hash'], x['raw']), self.words_exclude.find()))
 
-    def add_ready_comment(self, post_fullname, text_hash, sub, comment_text, post_url):
-        found = self.comments.find_one({"fullname": post_fullname, "text_hash": text_hash})
+    def add_ready_comment(self, comment_main_data, sub, supplier="reddit"):
+        found = self.comments.find_one(
+            {"$or": [
+                {"fullname": comment_main_data.fullname},
+                {"text_hash": comment_main_data.text_hash}]
+            })
         if found:
             return None
-        return self.comments.insert_one(
-            {
+
+        return self.comments.insert_one(dict(
+            comment_main_data.get_data(),
+            **{
                 "time": time.time(),
-                "fullname": post_fullname,
-                "text_hash": text_hash,
                 "state": CS_READY_FOR_COMMENT,
                 "sub": sub,
-                "text": comment_text,
-                "post_url": post_url
+                "supplier": supplier,
             }
+        )
         )
 
     def get_ready(self, sub=None):
@@ -91,6 +95,14 @@ PERSIST_STATE = lambda x: "load_state_%s" % x
 PREV_START_TIME = "p_t_start"
 PREV_END_TIME = "p_t_end"
 PREV_LOADED_COUNT = "p_loaded_count"
+
+
+def post_to_dict(post):
+    return {
+        "created_utc": post.created_utc,
+        "fullname": post.fullname,
+        "num_comments": post.num_comments,
+    }
 
 
 class CommentFounderStateStorage(object):

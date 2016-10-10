@@ -1,17 +1,22 @@
 import logging
 import os
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 from threading import Thread, RLock
 
+from wsgi.rr_people.comment_suppliers.reddit import RedditCommentSupplier
+from wsgi.rr_people.comment_suppliers.youtube import YoutubeCommentsSupplier
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.reader import CommentSearcherWorker
 from wsgi.rr_people.states.processes import ProcessDirector
 
 log = logging.getLogger("manage")
 
+SUPPLIERS = {"reddit": RedditCommentSupplier(),
+             "youtube": YoutubeCommentsSupplier()}
+
 
 class CommentSearcher():
-    def __init__(self, user_agent=None):
+    def __init__(self):
         """
         :param user_agent: for reddit non auth and non oauth client
         :param lcp: low copies posts if persisted
@@ -28,12 +33,12 @@ class CommentSearcher():
             for message in comment_queue.get_who_needs_comments():
                 try:
                     nc_sub = message.get("data")
-                    csw = CommentSearcherWorker(self.end_queue, nc_sub)
+                    csw = CommentSearcherWorker(self.end_queue, nc_sub, SUPPLIERS)
                     csw.start()
                     log.info("was started %s" % csw.pid)
                     self.set_pid_data(csw.pid, csw)
                 except Exception as e:
-                    log.error("error at start comment search worker %s"%e)
+                    log.error("error at start comment search worker %s" % e)
 
         def end():
             while 1:

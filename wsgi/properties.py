@@ -78,13 +78,6 @@ WEEK_DAYS = {0: "MO", 1: "TU", 2: "WE", 3: "TH", 4: "FR", 5: "SA", 6: "SU"}
 TIME_TO_WAIT_NEW_COPIES = 3600 * 24
 TIME_TO_RELOAD_SUB_POSTS = 3600 * 2  # at live random in consumer
 
-AE_MIN_COMMENT_KARMA = 10000
-AE_MIN_LINK_KARMA = 10000
-AE_MIN_SLEEP_TIME = 6 * HOUR
-AE_MAX_SLEEP_TIME = 12 * HOUR
-AE_AUTHOR_MIN_ACTIONS = 1000
-
-AE_ADD_AUTHORS = True
 
 DEFAULT_LIMIT = 500
 # DEFAULT_LIMIT = 20
@@ -97,19 +90,12 @@ shift_copy_comments_part = 5  # общее количество коммента
 min_donor_comment_ups = 5
 max_donor_comment_ups = 100000
 min_donor_num_comments = 50
+max_skip_comments = 34
 
-max_consuming = 80
-min_consuming = 60
 
-min_voting = 65
-max_voting = 85
-
-step_time_after_trying = 60
-tryings_count = 10
-
-time_step_less_iteration_power = 0.85
-
-want_coefficient_max = 100
+YOUTUBE_DEVELOPER_KEY = "AIzaSyCYF4GPkVpdYjZ5RpDaSMcbpRpfkavnUzc"
+YOUTUBE_API_SERVICE_NAME = "youtube"
+YOUTUBE_API_VERSION = "v3"
 
 # imgur properties
 ImgrClientID = 'd7e9f9350ebe5a8'

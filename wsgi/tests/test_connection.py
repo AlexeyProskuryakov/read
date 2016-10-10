@@ -9,7 +9,7 @@ def create_test_comment(sub="ts", text="test_text", fn="test_fn", link="http://t
 
     text_hash = hash(sub + text + fn + link)
     cs.comments.delete_one({"fullname": fn, "text_hash": text_hash})
-    result = cs.add_ready_comment(fn, text_hash, sub, text, link)
+    result = cs.add_ready_comment(fn, text_hash, text, link, sub)
 
     assert result.inserted_id
     comment_id = str(result.inserted_id)

@@ -2,7 +2,6 @@ import logging
 import random
 import re
 
-
 import praw
 import time
 from praw.objects import MoreComments
@@ -67,9 +66,10 @@ IS_STARTED = "started"
 PROCESSED_COUNT = "processed_count"
 CURRENT = "current"
 
-log = logging.getLogger("man")
+log = logging.getLogger("rr_people")
 
 POSTS_TTL = 60 * 10
+
 
 class Singleton(type):
     _instances = {}
@@ -78,7 +78,6 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-
 
 
 class _RedditPostsCache():
@@ -95,9 +94,6 @@ class _RedditPostsCache():
             else:
                 del self._posts_cache[sub]
                 del self._posts_cache_timings[sub]
-                return None
-        else:
-            return None
 
     def set_posts(self, sub, posts):
         self._posts_cache[sub] = posts
@@ -141,43 +137,10 @@ class RedditHandler(object):
             log.exception(e)
             return []
 
-    def get_all_comments(self, post):
-        if post.fullname in self.posts_comments_cache:
-            return self.posts_comments_cache[post.fullname]
-
-        comments = list(self.comments_sequence(post.comments))
-        self.posts_comments_cache[post.fullname] = comments
-        return comments
-
-    def clear_cache(self, post):
-        if post.fullname in self.posts_comments_cache:
-            del self.posts_comments_cache[post.fullname]
-
-    def comments_sequence(self, comments):
-        sequence = list(comments)
-        position = 0
-        while 1:
-            to_add = []
-            for i in xrange(position, len(sequence)):
-                position = i
-                comment = sequence[i]
-                if isinstance(comment, MoreComments):
-                    to_add = comment.comments()
-                    break
-                else:
-                    yield comment
-
-            if to_add:
-                sequence.pop(position)
-                for el in reversed(to_add):
-                    sequence.insert(position, el)
-
-            if position >= len(sequence) - 1:
-                break
-
     def search(self, query):
         copies = list(self.reddit.search(query))
-        return list(copies)
+        return copies
+
 
 token_reg = re.compile("[\\W\\d]+")
 
@@ -211,20 +174,12 @@ def cmp_by_comments_count(x, y):
     return x.num_comments - y.num_comments
 
 
-def post_to_dict(post):
-    return {
-        "created_utc": post.created_utc,
-        "fullname": post.fullname,
-        "num_comments": post.num_comments,
-    }
-
 def check_on_exclude(text, exclude_dict):
     c_tokens = set(normalize(text))
     for token in c_tokens:
         if hash(token) in exclude_dict:
             return False, None
     return True, c_tokens
-
 
 
 if __name__ == '__main__':

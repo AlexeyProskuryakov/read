@@ -1,67 +1,30 @@
 # coding=utf-8
 import logging
-import re
+
 import time
 from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.process import current_process
 
-from wsgi.properties import min_copy_count, \
-    shift_copy_comments_part, min_donor_comment_ups, max_donor_comment_ups, \
-    DEFAULT_LIMIT
-from wsgi.rr_people import RedditHandler, cmp_by_created_utc, post_to_dict, S_WORK, check_on_exclude, LOADED_COUNT, \
-    START_TIME, END_TIME, IS_ENDED, PROCESSED_COUNT
-from wsgi.rr_people import normalize
+from wsgi.properties import DEFAULT_LIMIT
+from wsgi.rr_people import RedditHandler, cmp_by_created_utc, S_WORK, LOADED_COUNT, START_TIME, END_TIME, IS_ENDED, \
+    PROCESSED_COUNT
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.states.persist import ProcessStatesPersist
-from wsgi.rr_people.storage import CommentsStorage, CommentFounderStateStorage
+from wsgi.rr_people.storage import CommentsStorage, CommentFounderStateStorage, post_to_dict
 
 log = logging.getLogger("reader")
 
+MAX_POSTS_PER_SESSION = 10
 
 def _so_long(created, min_time):
     return (datetime.now() - datetime.fromtimestamp(created)).total_seconds() > min_time
 
 
 cs_aspect = lambda x: "CS_%s" % x
-is_cs_aspect = lambda x: x.count("CS_") == 1
-cs_sub = lambda x: x.replace("CS_", "") if isinstance(x, (str, unicode)) and is_cs_aspect(x) else x
-
-re_url = re.compile("((https?|ftp)://|www\.)[^\s/$.?#].[^\s]*")
-re_crying_chars = re.compile("[A-Z]{2,}")
-re_answer = re.compile("\> .*\n?")
-re_slash = re.compile("/?r/\S+")
-re_not_latin = re.compile("[^a-zA-Z0-9\,\.\?\!\:\;\(\)\$\%\#\@\-\+\=\_\/\\\\\"\'\[\]\{\}\>\<]\*\&\^\±\§\~\`")
-
-
-def is_good_text(text):
-    return len(text) >= 15 and \
-           len(text) <= 140 and \
-           len(re_not_latin.findall(text)) == 0 and \
-           len(re_url.findall(text)) == 0 and \
-           len(re_crying_chars.findall(text)) == 0 and \
-           len(re_answer.findall(text)) == 0 and \
-           len(re_slash.findall(text)) == 0
-
-
-def start(state_persist, aspect):
-    _aspect = cs_aspect(aspect)
-    _pid = current_process().pid
-    started = state_persist.can_start_aspect(_aspect, _pid)
-    if started.get("started", False):
-        state_persist.set_state_data(_aspect, {"state": "started", "by": _pid})
-        return True
-    return False
-
-
-def stop(state_persist, aspect):
-    _aspect = cs_aspect(aspect)
-    state_persist.stop_aspect(_aspect)
-    state_persist.set_state_data(_aspect, {"state": "stopped"})
-
 
 class CommentSearcherWorker(Process, RedditHandler):
-    def __init__(self, queue, sub):
+    def __init__(self, queue, sub, suppliers):
         super(CommentSearcherWorker, self).__init__()
         RedditHandler.__init__(self, "comment search worker for %s" % sub)
 
@@ -74,61 +37,10 @@ class CommentSearcherWorker(Process, RedditHandler):
         self.comment_storage = CommentsStorage(name="comment_searcher_worker")
 
         self.sub = sub
+        self.suppliers = suppliers
 
-    def _get_acceptor(self, posts):
-        posts.sort(cmp_by_created_utc)
-        half_avg = float(reduce(lambda x, y: x + y.num_comments, posts, 0)) / (len(posts) * 2)
-        for post in posts:
-            if not post.archived and post.num_comments < half_avg:
-                return post
 
-    def _get_post_copies(self, post):
-        search_request = "url:\'%s\'" % post.url
-        copies = list(self.reddit.search(search_request)) + [post]
-        return list(copies)
-
-    def _retrieve_interested_comment(self, copy, post):
-        # prepare comments from donor to selection
-        after = copy.num_comments / shift_copy_comments_part
-        if not after:
-            return None, None
-        if after > 34:
-            after = 34
-        for i, comment in enumerate(self.comments_sequence(copy.comments)):
-            if i < after:
-                continue
-            if comment.ups >= min_donor_comment_ups and comment.ups <= max_donor_comment_ups and post.author != comment.author:
-                body = comment.body
-                if body:
-                    check, tokens = self._check_comment_text(comment.body, post)
-                    if check:
-                        return comment, hash(tuple(tokens))
-        return None, None
-
-    def _check_comment_text(self, text, post):
-        """
-        Checking in db, and by is good and found similar text in post comments.
-        Similar it is when tokens (only words) have equal length and full intersection
-        :param text:
-        :param post:
-        :return:
-        """
-        if is_good_text(text):
-            ok, c_tokens = check_on_exclude(text, self.exclude_words)
-            if not ok:
-                return False, None
-            for p_comment in self.get_all_comments(post):
-                p_text = p_comment.body
-                if is_good_text(p_text):
-                    p_tokens = set(normalize(p_text))
-                    if len(c_tokens) == len(p_tokens) and len(p_tokens.intersection(c_tokens)) == len(p_tokens):
-                        log.info("found similar text [%s] in post %s" % (c_tokens, post.fullname))
-                        return False, None
-            self.clear_cache(post)
-            return True, c_tokens
-        return False, None
-
-    def _get_posts(self, sub):
+    def get_new_posts(self, sub):
         state = self.state_storage.get_state(sub)
         limit = DEFAULT_LIMIT
         if state:
@@ -155,37 +67,36 @@ class CommentSearcherWorker(Process, RedditHandler):
         return posts
 
     def find_comment(self, sub):
-        self.exclude_words = self.comment_storage.get_words_exclude()
-        posts = self._get_posts(sub)
+        posts = self.get_new_posts(sub)
         self.state_persist.set_state_data(cs_aspect(sub), {"state": S_WORK, "retrieved": len(posts)})
         self.state_storage.set_started(sub)
         log.info("Start finding comments to sub %s" % sub)
+        count_saved = 0
         for post in posts:
             self.state_storage.set_current(sub, post_to_dict(post))
             try:
-                copies = self._get_post_copies(post)
-                if len(copies) >= min_copy_count:
-                    post = self._get_acceptor(copies)
-                    comment, c_hash = None, None
-                    for copy in copies:
-                        if post and copy.subreddit != post.subreddit and copy.fullname != post.fullname:
-                            comment, c_hash = self._retrieve_interested_comment(copy, post)
-                            if comment:
-                                log.info("Find comment: [%s]\n in post: [%s] (%s) at subreddit: [%s]" % (
-                                    comment.body, post, post.fullname, sub))
-                                break
-
-                    if comment:
-                        insert_result = self.comment_storage.add_ready_comment(post.fullname, c_hash, sub,
-                                                                               comment.body, post.permalink)
+                for supplier in self.suppliers:
+                    supplier.set_exclude_words(self.comment_storage.get_words_exclude())
+                    comment_main_data = supplier.get_comment(post)
+                    if comment_main_data:
+                        insert_result = self.comment_storage.add_ready_comment(comment_main_data,
+                                                                               sub,
+                                                                               supplier.get_name(),
+                                                                               )
                         if not insert_result:
                             log.warning("Found already stored comment in post: [%s] at subreddit: [%s] :(" % (
                                 post.fullname, sub))
                             continue
                         else:
-                            log.info("Will store comment in post: [%s] at subreddit: [%s] :)" % (post.fullname, sub))
-                            self.state_persist.set_state_data(cs_aspect(sub), {"state": "found", "for": post.fullname})
+                            log.info(
+                                "Will store comment in post: [%s] at subreddit: [%s] :) [%s]" % (comment_main_data.fullname, sub, comment_main_data.text))
+                            self.state_persist.set_state_data(cs_aspect(sub),
+                                                              {"state": "found", "for": post.fullname})
                             yield str(insert_result.inserted_id)
+                            count_saved += 1
+                            if count_saved >= MAX_POSTS_PER_SESSION:
+                                return
+                            break
 
             except Exception as e:
                 log.exception(e)
@@ -193,18 +104,33 @@ class CommentSearcherWorker(Process, RedditHandler):
         self.state_storage.set_ended(sub)
 
     def comment_retrieve_iteration(self, sub):
-        start(self.state_persist, sub)
+        if not self.imply_start(sub):
+            self.imply_stop(sub)
 
-        log.info("Will start find comments for [%s]" % (sub))
         try:
             for comment_id in self.find_comment(sub):
                 self.comment_queue.put_comment(sub, comment_id)
         except Exception as e:
             log.exception(e)
 
-        stop(self.state_persist, sub)
-
-        self.queue.put(self.pid)
+        self.imply_stop(sub)
 
     def run(self):
         self.comment_retrieve_iteration(self.sub)
+
+    # todo remove this methods and replace process for another new
+    def imply_start(self, sub):
+        _aspect = cs_aspect(sub)
+        _pid = current_process().pid
+        started = self.state_persist.can_start_aspect(_aspect, _pid)
+        if started.get("started", False):
+            self.state_persist.set_state_data(_aspect, {"state": "started", "by": _pid})
+            return True
+        return False
+
+    def imply_stop(self, sub):
+        _aspect = cs_aspect(sub)
+        self.state_persist.stop_aspect(_aspect)
+        self.state_persist.set_state_data(_aspect, {"state": "stopped"})
+
+        self.queue.put(self.pid)
