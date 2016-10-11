@@ -2,7 +2,7 @@ import logging
 
 import redis
 
-from wsgi.properties import queue_redis_address, queue_redis_password, queue_redis_port
+from wsgi import ConfigManager
 
 log = logging.getLogger("pq")
 
@@ -12,9 +12,10 @@ NEED_COMMENT = "need_comment"
 
 class CommentQueue():
     def __init__(self, name="?", clear=False, max_connections=2):
-        self.redis = redis.StrictRedis(host=queue_redis_address,
-                                       port=queue_redis_port,
-                                       password=queue_redis_password,
+        cm = ConfigManager()
+        self.redis = redis.StrictRedis(host=cm.get('comment_redis_address'),
+                                       port=cm.get('comment_redis_port'),
+                                       password=cm.get('comment_redis_password'),
                                        db=0,
                                        max_connections=max_connections
                                        )

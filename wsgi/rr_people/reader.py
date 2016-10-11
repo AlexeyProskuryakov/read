@@ -1,6 +1,5 @@
 # coding=utf-8
 import logging
-
 import time
 from datetime import datetime
 from multiprocessing import Process
@@ -9,19 +8,21 @@ from multiprocessing.process import current_process
 from wsgi.properties import DEFAULT_LIMIT
 from wsgi.rr_people import RedditHandler, cmp_by_created_utc, S_WORK, LOADED_COUNT, START_TIME, END_TIME, IS_ENDED, \
     PROCESSED_COUNT
+from wsgi.rr_people.entity_states import ProcessStatesPersist
 from wsgi.rr_people.queue import CommentQueue
-from wsgi.rr_people.states.persist import ProcessStatesPersist
 from wsgi.rr_people.storage import CommentsStorage, CommentFounderStateStorage, post_to_dict
 
 log = logging.getLogger("reader")
 
 MAX_POSTS_PER_SESSION = 10
 
+
 def _so_long(created, min_time):
     return (datetime.now() - datetime.fromtimestamp(created)).total_seconds() > min_time
 
 
 cs_aspect = lambda x: "CS_%s" % x
+
 
 class CommentSearcherWorker(Process, RedditHandler):
     def __init__(self, queue, sub, suppliers):
@@ -38,7 +39,6 @@ class CommentSearcherWorker(Process, RedditHandler):
 
         self.sub = sub
         self.suppliers = suppliers
-
 
     def get_new_posts(self, sub):
         state = self.state_storage.get_state(sub)
@@ -89,7 +89,8 @@ class CommentSearcherWorker(Process, RedditHandler):
                             continue
                         else:
                             log.info(
-                                "Will store comment in post: [%s] at subreddit: [%s] :) [%s]" % (comment_main_data.fullname, sub, comment_main_data.text))
+                                "Will store comment in post: [%s] at subreddit: [%s] :) [%s]" % (
+                                comment_main_data.fullname, sub, comment_main_data.text))
                             self.state_persist.set_state_data(cs_aspect(sub),
                                                               {"state": "found", "for": post.fullname})
                             yield str(insert_result.inserted_id)
@@ -104,33 +105,29 @@ class CommentSearcherWorker(Process, RedditHandler):
         self.state_storage.set_ended(sub)
 
     def comment_retrieve_iteration(self, sub):
-        if not self.imply_start(sub):
-            self.imply_stop(sub)
-
         try:
             for comment_id in self.find_comment(sub):
                 self.comment_queue.put_comment(sub, comment_id)
         except Exception as e:
             log.exception(e)
 
-        self.imply_stop(sub)
-
     def run(self):
+        tracker = self.imply_start()
+
         self.comment_retrieve_iteration(self.sub)
 
-    # todo remove this methods and replace process for another new
-    def imply_start(self, sub):
-        _aspect = cs_aspect(sub)
-        _pid = current_process().pid
-        started = self.state_persist.can_start_aspect(_aspect, _pid)
-        if started.get("started", False):
-            self.state_persist.set_state_data(_aspect, {"state": "started", "by": _pid})
-            return True
-        return False
+        self.imply_stop()
+        tracker.stop_track()
 
-    def imply_stop(self, sub):
-        _aspect = cs_aspect(sub)
-        self.state_persist.stop_aspect(_aspect)
+    def imply_start(self):
+        _aspect = cs_aspect(self.sub)
+
+        tracker = self.state_persist.start_aspect(_aspect)
+        if tracker:
+            self.state_persist.set_state_data(_aspect, {"state": "started", "by": current_process().pid})
+            return tracker
+
+    def imply_stop(self):
+        _aspect = cs_aspect(self.sub)
         self.state_persist.set_state_data(_aspect, {"state": "stopped"})
-
         self.queue.put(self.pid)

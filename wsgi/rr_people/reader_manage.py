@@ -7,7 +7,7 @@ from wsgi.rr_people.comment_suppliers.reddit import RedditCommentSupplier
 from wsgi.rr_people.comment_suppliers.youtube import YoutubeCommentsSupplier
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.reader import CommentSearcherWorker
-from wsgi.rr_people.states.processes import ProcessDirector
+from states.processes import ProcessDirector
 
 log = logging.getLogger("manage")
 
@@ -47,10 +47,10 @@ class CommentSearcher():
                 self.join_pid(pid)
 
         pd = ProcessDirector("comment searcher")
-        if not pd.is_aspect_worked("comment_searcher"):
+        if not pd.is_aspect_work("comment_searcher"):
             Thread(target=start).start()
             Thread(target=end).start()
-            pd.start_aspect("comment_searcher", os.getpid())
+            pd.start_aspect("comment_searcher", 5)
         else:
             log.info("Threads not start because another instance work")
 

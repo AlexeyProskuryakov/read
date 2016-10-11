@@ -4,8 +4,8 @@ import logging
 import redis
 import time
 
+from wsgi import ConfigManager
 from wsgi.db import DBHandler
-from wsgi.properties import comments_mongo_uri, comments_db_name, cfs_redis_address, cfs_redis_port, cfs_redis_password
 from wsgi.rr_people import hash_word, START_TIME, END_TIME, LOADED_COUNT, CURRENT, PROCESSED_COUNT, IS_ENDED, IS_STARTED
 
 CS_COMMENTED = "commented"
@@ -16,7 +16,11 @@ _comments = "comments"
 
 class CommentsStorage(DBHandler):
     def __init__(self, name="?"):
-        super(CommentsStorage, self).__init__(name=name, uri=comments_mongo_uri, db_name=comments_db_name)
+        cm = ConfigManager()
+        super(CommentsStorage, self).__init__(name=name,
+                                              uri=cm.get('comments_mongo_uri'),
+                                              db_name=cm.get('comments_db_name')
+                                              )
         collections_names = self.db.collection_names(include_system_collections=False)
         if _comments not in collections_names:
             self.comments = self.db.create_collection(_comments)
@@ -107,9 +111,10 @@ def post_to_dict(post):
 
 class CommentFounderStateStorage(object):
     def __init__(self, name="?", clear=False, max_connections=2):
-        self.redis = redis.StrictRedis(host=cfs_redis_address,
-                                       port=cfs_redis_port,
-                                       password=cfs_redis_password,
+        cm = ConfigManager()
+        self.redis = redis.StrictRedis(host=cm.get('cfs_redis_address'),
+                                       port=cm.get('cfs_redis_port'),
+                                       password=cm.get('cfs_redis_password'),
                                        db=0,
                                        max_connections=max_connections
                                        )

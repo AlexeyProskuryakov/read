@@ -3,15 +3,9 @@
         <tbody>
         <tr>
             <td>
-                <small>Мьютекс выставлен для:</small>
+                <small>Работает? </small>
             </td>
-            <td>{{process_state.mutex_state.get('pid', '')}}</td>
-        </tr>
-        <tr>
-            <td>
-                <small>Жив ли:</small>
-            </td>
-            <td>{{process_state.mutex_state.get("work", "нет")}}</td>
+            <td>{{process_state.mutex_state}}</td>
         </tr>
         </tbody>
     </table>

@@ -9,19 +9,17 @@ from flask import Flask, logging, request, render_template, session, url_for, g
 from flask.json import jsonify
 from flask_debugtoolbar import DebugToolbarExtension
 from flask_login import LoginManager, login_user, login_required, logout_user
+from wake_up.views import wake_up_app
 from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
 from wsgi.rr_people import S_WORK, check_on_exclude
+from wsgi.rr_people.entity_states import ProcessStatesPersist
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.reader import cs_aspect, CommentFounderStateStorage
 from wsgi.rr_people.reader_manage import CommentSearcher
-from wsgi.rr_people.states import get_worked_pids
-from wsgi.rr_people.states.persist import ProcessStatesPersist
-from wsgi.rr_people.states.processes import ProcessDirector
 from wsgi.rr_people.storage import CommentsStorage
 from wsgi.user_management import UsersHandler, User
-from wsgi.wake_up import WakeUp
 
 __author__ = '4ikist'
 
@@ -40,6 +38,8 @@ app = Flask("Read", template_folder=cur_dir + "/templates", static_folder=cur_di
 
 app.secret_key = 'foo bar baz'
 app.config['SESSION_TYPE'] = 'filesystem'
+
+app.register_blueprint(wake_up_app, url_prefix="/wake_up")
 
 
 def tst_to_dt(value):
@@ -67,30 +67,7 @@ if os.environ.get("test", False):
     app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
     toolbar = DebugToolbarExtension(app)
 
-wu = WakeUp()
-wu.daemon = True
-wu.start()
-
 comment_searcher = CommentSearcher()
-
-@app.route("/wake_up/<salt>", methods=["POST"])
-def wake_up(salt):
-    return jsonify(**{"result": salt})
-
-
-@app.route("/wake_up", methods=["GET", "POST"])
-def wake_up_manage():
-    if request.method == "POST":
-        urls = request.form.get("urls")
-        urls = urls.split("\n")
-        for url in urls:
-            url = url.strip()
-            if url:
-                wu.store.add_url(url)
-
-    urls = wu.store.get_urls()
-    return render_template("wake_up.html", **{"urls": urls})
-
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -154,10 +131,6 @@ def logout():
 @app.route("/")
 @login_required
 def main():
-    if request.method == "POST":
-        _url = request.form.get("url")
-        wu.what = _url
-
     user = g.user
     return render_template("main.html", **{"username": user.name})
 
@@ -168,7 +141,7 @@ def start_comment_search(sub):
     comment_queue.need_comment(sub)
     while 1:
         state = state_persist.get_process_state(cs_aspect(sub))
-        if state.mutex_state and S_WORK in state.mutex_state:
+        if state.mutex_state:
             return jsonify({"global": state.global_state, "mutex": state.mutex_state})
         time.sleep(1)
 
@@ -192,9 +165,9 @@ def cleat_process_log(sub):
 def comments():
     subs_names = db.get_all_humans_subs()
     subs_states = {}
-    wp = get_worked_pids()
+
     for sub in subs_names:
-        subs_states[sub] = state_persist.get_process_state(cs_aspect(sub), worked_pids=wp)
+        subs_states[sub] = state_persist.get_process_state(cs_aspect(sub))
 
     return render_template("comments.html", **{"subs_states": subs_states})
 
