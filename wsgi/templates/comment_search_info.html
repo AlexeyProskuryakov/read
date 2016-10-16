@@ -94,7 +94,7 @@
 
 
     <div class="row">
-        <h3>Посты с найденным текстом но не прокомментированные.
+        <h3>Комменты с найденным текстом но не прокомментированные.
 
             <button class="btn btn-primary" type="button" data-toggle="collapse"
                     data-target="#comments"
@@ -112,8 +112,8 @@
                     <td>text</td>
                     <td>is in queue?</td>
                     <td>when found</td>
-
-                <td>is in queue?</td>
+                    <td>state</td>
+                    <td>supplier</td>
                 </tr>
                 </thead>
                 <tbody>
@@ -132,6 +132,10 @@
                      <td>
                         {{post['time'] | tst_to_dt}}
                     </td>
+                      <td>
+                        {{post['state']}}
+                    </td>
+                    <td>{{post['supplier']}}</td>
                 </tr>
 
                 {% endfor %}

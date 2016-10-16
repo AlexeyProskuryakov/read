@@ -5,7 +5,6 @@ import logging
 from pymongo import MongoClient
 
 from wsgi import ConfigManager
-from wsgi.properties import mongo_uri, db_name
 
 __author__ = 'alesha'
 

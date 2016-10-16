@@ -4,6 +4,8 @@ import logging
 import redis
 import time
 
+from bson.objectid import ObjectId
+
 from wsgi import ConfigManager
 from wsgi.db import DBHandler
 from wsgi.rr_people import hash_word, START_TIME, END_TIME, LOADED_COUNT, CURRENT, PROCESSED_COUNT, IS_ENDED, IS_STARTED
@@ -76,21 +78,23 @@ class CommentsStorage(DBHandler):
         )
         )
 
-    def get_ready(self, sub=None):
-        q = {'state': CS_READY_FOR_COMMENT}
+    def get_comments_of_sub(self, sub=None, state=CS_READY_FOR_COMMENT):
+        q = {}
+        if state:
+            q['state'] = state
         if sub:
             q['sub'] = sub
 
         return list(self.comments.find(q))
 
-    def get_commented(self, sub):
-        q = {"state": CS_COMMENTED, "sub": sub}
-        return list(self.comments.find(q).sort([("time", -1)]))
-
-    def get_comments(self, posts_fullnames):
-        for el in self.comments.find({"fullname": {"$in": posts_fullnames}},
-                                     projection={"text": True, "fullname": True, "post_url": True}):
+    def get_comments(self, posts_ids):
+        for el in self.comments.find({"_id": {"$in": map(lambda x: ObjectId(x), posts_ids)}},
+                                     projection={"_id": True, "text": True, "fullname": True, "post_url": True,
+                                                 "supplier": True}):
             yield el
+
+    def set_comment_state(self, comment_id, state):
+        return self.comments.update_one({"_id": ObjectId(comment_id)}, {"$set": {"state": state}})
 
 
 log = logging.getLogger("storage")
@@ -113,7 +117,7 @@ class CommentFounderStateStorage(object):
     def __init__(self, name="?", clear=False, max_connections=2):
         cm = ConfigManager()
         self.redis = redis.StrictRedis(host=cm.get('cfs_redis_address'),
-                                       port=cm.get('cfs_redis_port'),
+                                       port=int(cm.get('cfs_redis_port')),
                                        password=cm.get('cfs_redis_password'),
                                        db=0,
                                        max_connections=max_connections

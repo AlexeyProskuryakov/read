@@ -14,7 +14,7 @@ class CommentQueue():
     def __init__(self, name="?", clear=False, max_connections=2):
         cm = ConfigManager()
         self.redis = redis.StrictRedis(host=cm.get('comment_redis_address'),
-                                       port=cm.get('comment_redis_port'),
+                                       port=int(cm.get('comment_redis_port')),
                                        password=cm.get('comment_redis_password'),
                                        db=0,
                                        max_connections=max_connections

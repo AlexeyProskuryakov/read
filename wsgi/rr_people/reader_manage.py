@@ -11,8 +11,10 @@ from states.processes import ProcessDirector
 
 log = logging.getLogger("manage")
 
-SUPPLIERS = {"reddit": RedditCommentSupplier(),
-             "youtube": YoutubeCommentsSupplier()}
+SUPPLIERS = [
+    YoutubeCommentsSupplier(),
+    RedditCommentSupplier(),
+]
 
 
 class CommentSearcher():
@@ -57,12 +59,10 @@ class CommentSearcher():
         log.info("comment searcher inited!")
 
     def join_pid(self, pid):
-        self.mu.acquire()
-        self._processes[pid].join()
-        del self._processes[pid]
-        self.mu.release()
+        with self.mu:
+            self._processes[pid].join()
+            del self._processes[pid]
 
     def set_pid_data(self, pid, data):
-        self.mu.acquire()
-        self._processes[pid] = data
-        self.mu.release()
+        with self.mu:
+            self._processes[pid] = data

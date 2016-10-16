@@ -9,7 +9,6 @@ from flask import Flask, logging, request, render_template, session, url_for, g
 from flask.json import jsonify
 from flask_debugtoolbar import DebugToolbarExtension
 from flask_login import LoginManager, login_user, login_required, logout_user
-from wake_up.views import wake_up_app
 from werkzeug.utils import redirect
 
 from wsgi.db import HumanStorage
@@ -18,8 +17,11 @@ from wsgi.rr_people.entity_states import ProcessStatesPersist
 from wsgi.rr_people.queue import CommentQueue
 from wsgi.rr_people.reader import cs_aspect, CommentFounderStateStorage
 from wsgi.rr_people.reader_manage import CommentSearcher
-from wsgi.rr_people.storage import CommentsStorage
+from wsgi.rr_people.storage import CommentsStorage, CS_COMMENTED
 from wsgi.user_management import UsersHandler, User
+
+from wsgi import properties
+from wake_up.views import wake_up_app
 
 __author__ = '4ikist'
 
@@ -168,14 +170,24 @@ def comments():
 
     for sub in subs_names:
         subs_states[sub] = state_persist.get_process_state(cs_aspect(sub))
-
     return render_template("comments.html", **{"subs_states": subs_states})
+
+
+@app.route("/comment/<id>/<state>", methods=["POST"])
+def set_comment_state(id, state):
+    comment_storage.set_comment_state(id, state)
+    return jsonify(**{"ok": True})
 
 
 @app.route("/comments/queue/<sub>", methods=["GET"])
 def sub_comments(sub):
     post_ids = comment_queue.get_all_comments_post_ids(sub)
-    posts = map(lambda x: {"url": x.get("post_url"), "fullname": x.get("fullname"), "text": x.get("text")},
+    posts = map(lambda x: {
+        "id": str(x.get("_id")),
+        "url": x.get("post_url"),
+        "fullname": x.get("fullname"),
+        "text": x.get("text"),
+        "supplier": x.get("supplier")},
                 comment_storage.get_comments(post_ids))
     return jsonify(**{"posts": posts})
 
@@ -183,14 +195,16 @@ def sub_comments(sub):
 @app.route("/comment_search/info/<sub>")
 @login_required
 def comment_search_info(sub):
-    posts = comment_storage.get_ready(sub)
+    posts = comment_storage.get_comments_of_sub(sub)
     comments_posts_ids = comment_queue.get_all_comments_post_ids(sub)
+    posts_commented = []
     if comments_posts_ids:
         for i, post in enumerate(posts):
             post['is_in_queue'] = str(post.get("_id")) in comments_posts_ids
             posts[i] = post
+            if post.get("state") == CS_COMMENTED:
+                posts_commented.append(post)
 
-    posts_commented = comment_storage.get_commented(sub)
     process_state = state_persist.get_process_state(cs_aspect(sub), history=True)
     cs_state = state_storage.get_state(sub)
 
@@ -212,7 +226,7 @@ def exclude():
         words = filter(lambda x: x.strip(), splitter.split(words))
         comment_storage.set_words_exclude(words)
         exclude_dict = comment_storage.get_words_exclude()
-        for post in comment_storage.get_ready():
+        for post in comment_storage.get_comments_of_sub():
             ok, _ = check_on_exclude(post.get("text"), exclude_dict)
             if not ok:
                 log.info("comment: %s \n not checked by new exclude words" % post)

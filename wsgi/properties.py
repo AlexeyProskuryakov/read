@@ -35,13 +35,7 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
-mongo_uri = "mongodb://3030:sederfes100500@ds055525.mongolab.com:55525/reddit_people"
-db_name = "reddit_people"
-
-comments_mongo_uri = "mongodb://milena:sederfes100500@ds015760.mlab.com:15760/humans_comments"
-comments_db_name = "humans_comments"
 expire_low_copies_posts = 3600 * 24 * 7
-
 
 states_address = "https://read-shlak0bl0k.rhcloud.com/rockmongo/x"
 
@@ -79,13 +73,10 @@ min_donor_num_comments = 50
 max_skip_comments = 34
 
 
-YOUTUBE_DEVELOPER_KEY = "AIzaSyCYF4GPkVpdYjZ5RpDaSMcbpRpfkavnUzc"
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
 # imgur properties
-ImgrClientID = 'd7e9f9350ebe5a8'
-ImgrClientSecret = '945c124e48fd9ca208788c70028d7e8d8c7dc7c1'
 
 test_mode = os.environ.get("RR_TEST", "false").strip().lower() in ("true", "1", "yes")
 print "TEST? ", test_mode

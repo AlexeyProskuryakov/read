@@ -33,3 +33,13 @@ function clear_process_log(sub){
         }
     });
 }
+
+function set_comment_bad(comment_id){
+    $.ajax({
+        type:"POST",
+        url:"/comment/"+comment_id+"/bad",
+        success:function(x){
+            $("#comment-"+comment_id).addClass("more-opacity");
+        }
+    })
+}

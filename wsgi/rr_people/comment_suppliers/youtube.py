@@ -6,7 +6,8 @@ from HTMLParser import HTMLParser
 
 from apiclient.discovery import build
 
-from wsgi.properties import YOUTUBE_DEVELOPER_KEY, YOUTUBE_API_VERSION, YOUTUBE_API_SERVICE_NAME
+from wsgi import ConfigManager
+from wsgi.properties import YOUTUBE_API_VERSION, YOUTUBE_API_SERVICE_NAME
 from wsgi.rr_people.comment_suppliers import Supplier, CommentMainData
 from wsgi.rr_people.comment_suppliers.utils import CommentsInPost
 from wsgi.rr_people.validate import check_comment_text, get_skip_comments_count
@@ -33,8 +34,9 @@ def get_video_id(post_url):
 # get videos by ids
 class YoutubeCommentsSupplier(Supplier):
     def __init__(self):
+        cn = ConfigManager()
         self.youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
-                             developerKey=YOUTUBE_DEVELOPER_KEY)
+                             developerKey=cn.get('YOUTUBE_DEVELOPER_KEY'))
 
         self.exclude_words = {}
         self.cp = CommentsInPost()
