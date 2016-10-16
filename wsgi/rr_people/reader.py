@@ -76,6 +76,8 @@ class CommentSearcherWorker(Process, RedditHandler):
             self.state_storage.set_current(sub, post_to_dict(post))
             try:
                 for supplier in self.suppliers:
+                    self.state_persist.set_state_data(cs_aspect(sub),
+                                                      {"state": "start find", "supplier": supplier.get_name()})
                     supplier.set_exclude_words(self.comment_storage.get_words_exclude())
                     comment_main_data = supplier.get_comment(post)
                     if comment_main_data:
@@ -90,7 +92,7 @@ class CommentSearcherWorker(Process, RedditHandler):
                         else:
                             log.info(
                                 "Will store comment in post: [%s] at subreddit: [%s] :) [%s]" % (
-                                comment_main_data.fullname, sub, comment_main_data.text))
+                                    comment_main_data.fullname, sub, comment_main_data.text))
                             self.state_persist.set_state_data(cs_aspect(sub),
                                                               {"state": "found", "for": post.fullname})
                             yield str(insert_result.inserted_id)
